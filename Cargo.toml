@@ -1,0 +1,5 @@
+[package]
+name = "ranged_integers"
+version = "0.1.0"
+authors = ["disiamylborane"]
+edition = "2018"
