@@ -12,7 +12,7 @@
 //! # #[macro_use] extern crate ranged_integers; use ranged_integers::*;
 //! 
 //! # fn main(){
-//! use core::mem::size_of;
+//! use core::mem::{size_of, align_of};
 //! assert_eq!(size_of::<Ranged::<100, 127>>(), 1); // Only i8 is needed to store the value
 //! assert_eq!(align_of::<Ranged::<100, 127>>(), 1);
 //! assert_eq!(size_of::<Ranged::<100, 128>>(), 2); // Need 16 bits to store +128
@@ -123,12 +123,13 @@
 #![feature(const_panic)]
 #![feature(const_fn)]
 #![feature(specialization)]
+#![feature(const_fn_union)]
 
 #![warn(missing_docs)]
 
 trait Aligner
 {
-    type A: Copy+Default;
+    type A: Copy;
 }
 
 #[derive(Copy, Clone)]
@@ -148,46 +149,58 @@ impl Aligner for AlignWrap<2> {
 
 
 #[derive(Copy, Clone)]
+#[repr(C)]
+union NumberBytes<const BYTES: usize> {
+    val: <AlignWrap<BYTES> as Aligner>::A,
+    bytes: [u8; BYTES],
+}
+
+#[derive(Copy, Clone)]
 struct Number<const BYTES: usize>
 {
-    val: [u8; BYTES],
-    _al: [<AlignWrap<BYTES> as Aligner>::A;0]
+    val: NumberBytes<BYTES>
 }
 
 impl<const BYTES: usize> Number<BYTES> {
     #[inline(always)]
     const fn from_i32(v: i32) -> Self {
-        let mut x = Self{val: [0; BYTES], _al: []};
-        if BYTES == 1 {
-            x.val[0] = v.to_ne_bytes()[0];
-        }
-        else if BYTES == 2 {
-            x.val[0] = v.to_ne_bytes()[0];
-            x.val[1] = v.to_ne_bytes()[1];
-        }
-        else if BYTES == 4 {
-            x.val[0] = v.to_ne_bytes()[0];
-            x.val[1] = v.to_ne_bytes()[1];
-            x.val[2] = v.to_ne_bytes()[2];
-            x.val[3] = v.to_ne_bytes()[3];
-        }
+        unsafe {
+            let mut x = Self{val: NumberBytes{bytes: [0; BYTES]}};
+            if BYTES == 1 {
+                x.val.bytes[0] = v.to_ne_bytes()[0];
+            }
+            else if BYTES == 2 {
+                let v = v.to_ne_bytes();
+                x.val.bytes[0] = v[0];
+                x.val.bytes[1] = v[1];
+            }
+            else if BYTES == 4 {
+                let v = v.to_ne_bytes();
+                x.val.bytes[0] = v[0];
+                x.val.bytes[1] = v[1];
+                x.val.bytes[2] = v[2];
+                x.val.bytes[3] = v[3];
+            }
 
-        x
+            x
+        }
     }
     #[inline(always)]
     const fn to_i32(self) -> i32 {
-        let mut x = 0_i32;
-        if BYTES == 1 {
-            x = i8::from_ne_bytes([self.val[0]]) as i32;
-        }
-        else if BYTES == 2 {
-            x = i16::from_ne_bytes([self.val[0], self.val[1]]) as i32;
-        }
-        else if BYTES == 4 {
-            x = i32::from_ne_bytes([self.val[0], self.val[1], self.val[2], self.val[3]]);
-        }
+        unsafe {
+            let mut x = 0_i32;
+            if BYTES == 1 {
+                x = i8::from_ne_bytes([self.val.bytes[0]]) as i32;
+            }
+            else if BYTES == 2 {
+                x = i16::from_ne_bytes([self.val.bytes[0], self.val.bytes[1]]) as i32;
+            }
+            else if BYTES == 4 {
+                x = i32::from_ne_bytes([self.val.bytes[0], self.val.bytes[1], self.val.bytes[2], self.val.bytes[3]]);
+            }
 
-        x
+            x
+        }
     }
 }
 

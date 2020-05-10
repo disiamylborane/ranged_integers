@@ -10,7 +10,7 @@ Ranged integers for Rust based on const generics.
 according to the bounds (maximum 32 bits):
 
 ```rust
-use core::mem::size_of;
+use core::mem::{size_of, align_of};
 
 assert_eq!(size_of::<Ranged::<100, 127>>(), 1); // Only i8 is needed to store the value
 assert_eq!(align_of::<Ranged::<100, 127>>(), 1);
