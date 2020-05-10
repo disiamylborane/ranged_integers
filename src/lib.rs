@@ -4,8 +4,8 @@
 //! 
 //! # Integer size
 //!
-//! [`Ranged`](struct.Ranged.html) stores a signed value. The type size is automatically adjusted 
-//! according to the bounds (maximum 32 bits):
+//! The [`Ranged`](struct.Ranged.html) automatically chooses between signed/unsigned
+//! and the data type (maximum signed 32 bits):
 //! ```
 //! #![feature(const_if_match)]
 //! #![feature(const_panic)]
@@ -13,24 +13,30 @@
 //! 
 //! # fn main(){
 //! use core::mem::{size_of, align_of};
-//! assert_eq!(size_of::<Ranged::<100, 127>>(), 1); // Only i8 is needed to store the value
-//! assert_eq!(align_of::<Ranged::<100, 127>>(), 1);
-//! assert_eq!(size_of::<Ranged::<100, 128>>(), 2); // Need 16 bits to store +128
-//! assert_eq!(align_of::<Ranged::<100, 128>>(), 2);
-//! assert_eq!(size_of::<Ranged::<0, 90000>>(), 4); // 4 bytes needed
+//! 
+//! assert_eq!(size_of::<Ranged::<-100, 127>>(), 1); // The range fits i8
+//! assert_eq!(align_of::<Ranged::<-100, 127>>(), 1);
+//! assert_eq!(size_of::<Ranged::<0, 200>>(), 1); // The range fits u8
+//! assert_eq!(align_of::<Ranged::<0, 200>>(), 1);
+//! assert_eq!(size_of::<Ranged::<-100, 200>>(), 2); // The range fits i16
+//! assert_eq!(align_of::<Ranged::<-100, 200>>(), 2);
+//! assert_eq!(size_of::<Ranged::<0, 90000>>(), 4); // i32 is needed
 //! assert_eq!(align_of::<Ranged::<0, 90000>>(), 4);
 //! # }
 //! ```
 //! 
 //! # Examples
 //! 
-//! The library's macro [`ranged!`](macro.ranged.html) requires the following features:
+//! The library's macro [`ranged!`](macro.ranged.html) requires the following features enabled:
 //! ```
 //! #![feature(const_if_match)]
 //! #![feature(const_panic)]
 //! ```
 //! 
-//! Use `Ranged<MIN, MAX>` as an argument to make the parameter's value compile-time checked:
+//! Use `Ranged<MIN, MAX>` as an argument to ensure the parameter range at compile-time.
+//!
+//! Release i32 from Ranged with `Ranged::get()`:
+//!
 //! ```
 //! # extern crate ranged_integers; use ranged_integers::*;
 //! fn move_player(dice_roll: Ranged<1, 6>) {
@@ -38,7 +44,7 @@
 //! }
 //! ```
 //! 
-//! Create the value at compile-time:
+//! Create the value at compile-time with `ranged!([MIN MAX] VALUE)`:
 //! ```
 //! # #![feature(const_if_match)] #![feature(const_panic)]
 //! # #[macro_use] extern crate ranged_integers; use ranged_integers::*; 
@@ -55,12 +61,12 @@
 //! # fn move_player(dice_roll: Ranged<1, 6>) {
 //! #     let x : i32 = dice_roll.get(); // Convert back to int
 //! # }
-//! move_player(ranged!([1 6] 7)); // Can't store 7 in [1 6] inverval
-//! move_player(ranged!([1 7] 7)); // Mismatched types, move_player() requires Ranged<1, 6>
+//! move_player(ranged!([1 6] 7)); // Error: Can't store 7 in [1 6] inverval
+//! move_player(ranged!([1 7] 7)); // Error: Mismatched types, move_player() requires Ranged<1, 6>
 //! ```
 //! 
 //! 
-//! A special case with single possible value:
+//! A special case with the single possible value:
 //! ```
 //! # #![feature(const_if_match)] #![feature(const_panic)]
 //! # #[macro_use] extern crate ranged_integers; use ranged_integers::*; 
@@ -124,14 +130,17 @@
 #![feature(const_fn)]
 #![feature(specialization)]
 #![feature(const_fn_union)]
+#![feature(trivial_bounds)]
 
 #![warn(missing_docs)]
+
 
 trait Aligner
 {
     type A: Copy;
 }
 
+// BUG: using IntLayout in AlignWrap causes stack overflow
 #[derive(Copy, Clone)]
 struct AlignWrap<const N: usize>;
 
@@ -155,31 +164,49 @@ union NumberBytes<const BYTES: usize> {
     bytes: [u8; BYTES],
 }
 
-#[derive(Copy, Clone)]
-struct Number<const BYTES: usize>
-{
-    val: NumberBytes<BYTES>
+impl<const BYTES: usize> NumberBytes<BYTES> {
+    const fn new() -> Self {
+        Self{bytes: [0; BYTES]}
+    }
 }
 
-impl<const BYTES: usize> Number<BYTES> {
+#[derive(Copy, Clone)]
+struct Number<const LAYOUT: IntLayout>
+{
+    val: NumberBytes<{LAYOUT.bytes()}>
+}
+
+impl<const LAYOUT: IntLayout> Number<LAYOUT> {
     #[inline(always)]
     const fn from_i32(v: i32) -> Self {
         unsafe {
-            let mut x = Self{val: NumberBytes{bytes: [0; BYTES]}};
-            if BYTES == 1 {
-                x.val.bytes[0] = v.to_ne_bytes()[0];
-            }
-            else if BYTES == 2 {
-                let v = v.to_ne_bytes();
-                x.val.bytes[0] = v[0];
-                x.val.bytes[1] = v[1];
-            }
-            else if BYTES == 4 {
-                let v = v.to_ne_bytes();
-                x.val.bytes[0] = v[0];
-                x.val.bytes[1] = v[1];
-                x.val.bytes[2] = v[2];
-                x.val.bytes[3] = v[3];
+            let mut x = Self{val: NumberBytes::new()};
+            match LAYOUT {
+                IntLayout::i8 => {
+                    let bytes = (v as i8).to_ne_bytes();
+                    x.val.bytes[0] = bytes[0];
+                }
+                IntLayout::u8 => {
+                    let bytes = (v as u8).to_ne_bytes();
+                    x.val.bytes[0] = bytes[0];
+                }
+                IntLayout::i16 => {
+                    let v = (v as i16).to_ne_bytes();
+                    x.val.bytes[0] = v[0];
+                    x.val.bytes[1] = v[1];
+                }
+                IntLayout::u16 => {
+                    let v = (v as u16).to_ne_bytes();
+                    x.val.bytes[0] = v[0];
+                    x.val.bytes[1] = v[1];
+                }
+                IntLayout::i32 => {
+                    let v = (v as i32).to_ne_bytes();
+                    x.val.bytes[0] = v[0];
+                    x.val.bytes[1] = v[1];
+                    x.val.bytes[2] = v[2];
+                    x.val.bytes[3] = v[3];
+                }
             }
 
             x
@@ -188,37 +215,63 @@ impl<const BYTES: usize> Number<BYTES> {
     #[inline(always)]
     const fn to_i32(self) -> i32 {
         unsafe {
-            let mut x = 0_i32;
-            if BYTES == 1 {
-                x = i8::from_ne_bytes([self.val.bytes[0]]) as i32;
+            match LAYOUT {
+                IntLayout::i8 => {
+                    i8::from_ne_bytes([self.val.bytes[0]]) as i32
+                }
+                IntLayout::u8 => {
+                    u8::from_ne_bytes([self.val.bytes[0]]) as i32
+                }
+                IntLayout::i16 => {
+                    i16::from_ne_bytes([self.val.bytes[0], self.val.bytes[1]]) as i32
+                }
+                IntLayout::u16 => {
+                    u16::from_ne_bytes([self.val.bytes[0], self.val.bytes[1]]) as i32
+                }
+                IntLayout::i32 => {
+                    i32::from_ne_bytes([self.val.bytes[0], self.val.bytes[1], self.val.bytes[2], self.val.bytes[3]])
+                }
             }
-            else if BYTES == 2 {
-                x = i16::from_ne_bytes([self.val.bytes[0], self.val.bytes[1]]) as i32;
-            }
-            else if BYTES == 4 {
-                x = i32::from_ne_bytes([self.val.bytes[0], self.val.bytes[1], self.val.bytes[2], self.val.bytes[3]]);
-            }
-
-            x
         }
     }
 }
 
-const fn bytes(val: i32)->usize {
-    if (-128 <= val) && (val <= 127) {
-        1
+#[derive(PartialEq, Eq, Copy, Clone)]
+#[allow(non_camel_case_types)]
+enum IntLayout {
+    i8, u8, i16, u16, i32
+}
+
+const fn memlayout(min: i32, max: i32) -> IntLayout {
+    if -128 <= min && max <= 127 {
+        IntLayout::i8
     }
-    else if (-32768 <= val) && (val <= 32767) {
-        2
+    else if 0<=min && max<=255 {
+        IntLayout::u8
+    }
+    else if -32768 <= min && max <= 32767 {
+        IntLayout::i16
+    }
+    else if 0<=min && max<=65535 {
+        IntLayout::u16
     }
     else {
-        4
+        IntLayout::i32
     }
 }
 
-const fn maxbytes(val1: i32, val2: i32)->usize {
-    max_i32(bytes(val1) as i32, bytes(val2) as i32) as usize
+impl IntLayout {
+    const fn bytes(self) -> usize {
+        match self {
+            Self::i8 => 1,
+            Self::u8 => 1,
+            Self::i16 => 2,
+            Self::u16 => 2,
+            Self::i32 => 4,
+        }
+    }
 }
+
 
 /// Create a ranged value at compile-time:
 /// ```
@@ -267,7 +320,7 @@ macro_rules! ranged {
 #[derive(Copy, Clone)]
 pub struct Ranged<const MIN: i32, const MAX: i32>
 {
-    v: Number<{maxbytes(MIN, MAX)}>
+    v: Number<{memlayout(MIN, MAX)}>
 }
 
 
@@ -313,7 +366,7 @@ impl<const MIN: i32, const MAX: i32> Ranged<MIN, MAX> {
 
 #[doc(hidden)]
 /// Create a fixed-valued Ranged at compile time
-pub fn const_val_i32<const VAL: i32>() -> Ranged<VAL, VAL> {
+pub const fn const_val_i32<const VAL: i32>() -> Ranged<VAL, VAL> {
     unsafe {Ranged::__unsafe_new(VAL)}
 }
 
@@ -413,9 +466,9 @@ impl<const AMIN: i32,
          {}
 
 
-
 #[cfg(test)]
 extern crate alloc;
 
 #[cfg(test)]
 mod tests;
+

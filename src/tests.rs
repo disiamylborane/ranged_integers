@@ -5,51 +5,79 @@ use alloc::format;
 
 #[test]
 fn sizes() {
-    assert_eq!(core::mem::size_of::<Ranged::<42,42>>(), 1);
-    assert_eq!(core::mem::size_of::<Ranged::<42,342>>(), 2);
-    assert_eq!(core::mem::size_of::<Ranged::<42,77742>>(), 4);
+    use core::mem::{size_of, align_of};
 
-    assert_eq!(core::mem::size_of::<Ranged::<1, 10>>(), 1);
-    assert_eq!(core::mem::size_of::<Ranged::<-10, -1>>(), 1);
-    assert_eq!(core::mem::size_of::<Ranged::<-10, 10>>(), 1);
+    macro_rules! sz_align {
+        ($sz:literal $t:ty) => {
+            assert_eq!(size_of::<$t>(), $sz);
+            assert_eq!(align_of::<$t>(), $sz);
+        }
+    };
 
-    assert_eq!(core::mem::size_of::<Ranged::<1, 127>>(), 1);
-    assert_eq!(core::mem::size_of::<Ranged::<1, 128>>(), 2);
-    assert_eq!(core::mem::size_of::<Ranged::<-128, 127>>(), 1);
-    assert_eq!(core::mem::size_of::<Ranged::<-129, 127>>(), 2);
-    assert_eq!(core::mem::size_of::<Ranged::<-129, 128>>(), 2);
+    sz_align!(1 Ranged::<0,0>);
+    sz_align!(1 Ranged::<10,10>);
+    sz_align!(1 Ranged::<255,255>);
+    sz_align!(1 Ranged::<127,127>);
+    sz_align!(1 Ranged::<-128,-128>);
+    sz_align!(1 Ranged::<0,10>);
+    sz_align!(1 Ranged::<0,127>);
+    sz_align!(1 Ranged::<0,255>);
+    sz_align!(1 Ranged::<127,255>);
+    sz_align!(1 Ranged::<-128,127>);
 
-    assert_eq!(core::mem::size_of::<Ranged::<1, 32767>>(), 2);
-    assert_eq!(core::mem::size_of::<Ranged::<1, 32768>>(), 4);
-    assert_eq!(core::mem::size_of::<Ranged::<-32768, 32767>>(), 2);
-    assert_eq!(core::mem::size_of::<Ranged::<-32768, 32768>>(), 4);
-    assert_eq!(core::mem::size_of::<Ranged::<-32769, -10>>(), 4);
-    assert_eq!(core::mem::size_of::<Ranged::<10, 32768>>(), 4);
+    sz_align!(2 Ranged::<-128,128>);
 
-    assert_eq!(core::mem::align_of::<Ranged::<42,42>>(), 1);
-    assert_eq!(core::mem::align_of::<Ranged::<42,342>>(), 2);
-    assert_eq!(core::mem::align_of::<Ranged::<42,77742>>(), 4);
+    sz_align!(2 Ranged::<-32768, 32767>);
+    sz_align!(2 Ranged::<0, 32768>);
+    sz_align!(2 Ranged::<0, 65535>);
+    sz_align!(2 Ranged::<-32768, -32768>);
+    sz_align!(2 Ranged::<32767, 32767>);
+    sz_align!(2 Ranged::<65535, 65535>);
 
-    assert_eq!(core::mem::align_of::<Ranged::<1, 10>>(), 1);
-    assert_eq!(core::mem::align_of::<Ranged::<-10, -1>>(), 1);
-    assert_eq!(core::mem::align_of::<Ranged::<-10, 10>>(), 1);
-
-    assert_eq!(core::mem::align_of::<Ranged::<1, 127>>(), 1);
-    assert_eq!(core::mem::align_of::<Ranged::<1, 128>>(), 2);
-    assert_eq!(core::mem::align_of::<Ranged::<-128, 127>>(), 1);
-    assert_eq!(core::mem::align_of::<Ranged::<-129, 127>>(), 2);
-    assert_eq!(core::mem::align_of::<Ranged::<-129, 128>>(), 2);
-
-    assert_eq!(core::mem::align_of::<Ranged::<1, 32767>>(), 2);
-    assert_eq!(core::mem::align_of::<Ranged::<1, 32768>>(), 4);
-    assert_eq!(core::mem::align_of::<Ranged::<-32768, 32767>>(), 2);
-    assert_eq!(core::mem::align_of::<Ranged::<-32768, 32768>>(), 4);
-    assert_eq!(core::mem::align_of::<Ranged::<-32769, -10>>(), 4);
-    assert_eq!(core::mem::align_of::<Ranged::<10, 32768>>(), 4);
+    sz_align!(4 Ranged::<-32768, 32768>);
+    sz_align!(4 Ranged::<0, 65536>);
+    sz_align!(4 Ranged::<65536, 65536>);
 }
 
 #[test]
 fn print_val() {
+    macro_rules! assert_val {
+        ([$min:literal $max:literal] $x:literal) => {
+            assert_eq!(ranged![[$min $max] $x].get(), $x);
+        }
+    };
+
+    assert_val!([-128 127] -128);
+    assert_val!([-128 127] -127);
+    assert_val!([-128 127] -30);
+    assert_val!([-128 127] -1);
+    assert_val!([-128 127] 0);
+    assert_val!([-128 127] 1);
+    assert_val!([-128 127] 30);
+    assert_val!([-128 127] 127);
+
+    assert_val!([0 200] 0);
+    assert_val!([0 200] 1);
+    assert_val!([0 200] 30);
+    assert_val!([0 200] 127);
+    assert_val!([0 200] 128);
+    assert_val!([0 200] 200);
+
+    assert_val!([-1000 1000] -500);
+    assert_val!([-1000 1000] -100);
+    assert_val!([-1000 1000] 0);
+    assert_val!([-1000 1000] 100);
+    assert_val!([-1000 1000] 500);
+
+    assert_val!([0 1000] 0);
+    assert_val!([0 1000] 100);
+    assert_val!([0 1000] 500);
+
+    assert_val!([0 65535] 0);
+    assert_val!([0 65535] 1);
+    assert_val!([0 65535] 65534);
+    assert_val!([0 65535] 65535);
+
     let x = const_val_i32::<42>();
     assert_eq!(format!("{}", x), "42");
     assert_eq!(format!("{:?}", x), "Ranged<42, 42> { _val: 42 }");
@@ -124,6 +152,10 @@ fn mul() {
     let c = Ranged::<{-3}, 0>::new(-1).unwrap() * Ranged::<0, 3>::new(2).unwrap();
     assert_eq!(format!("{}", c), "-2");
     assert_eq!(format!("{:?}", c), "Ranged<-9, 0> { _val: -2 }");
+
+    let b = ranged!{[-30000 30000] 1} * ranged!{[-3 3] 2};
+    assert_eq!(format!("{}", b), "2");
+    assert_eq!(format!("{:?}", b), "Ranged<-90000, 90000> { _val: 2 }");
 }
 
 #[test]
