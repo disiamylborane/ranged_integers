@@ -240,6 +240,7 @@
 #![feature(const_evaluatable_checked)]
 #![feature(const_panic)]
 #![feature(const_trait_impl)]
+#![feature(specialization)]
 
 #![warn(missing_docs)]
 
@@ -274,16 +275,18 @@ pub const fn memlayout(min: irang, max: irang) -> IntLayout {
         }
     }
 
+    if min>max {
+        panic!("Ranged error: MIN cannot be greater than MAX")
+    }
+
     crange!{i8 u8 i16 u16 i32 u32 i64 u64}
     IntLayout::i128
 }
-
 
 /// A value restricted to the given bounds
 #[derive(Clone, Copy)]
 pub struct Ranged<const MIN: irang, const MAX: irang>
 where 
-    AlignWrap<{memlayout(MIN, MAX)}>: Aligner,
     [u8; memlayout(MIN, MAX).bytes()]:,
 {
     v: NumberBytes<{memlayout(MIN, MAX)}>
@@ -292,7 +295,6 @@ where
 
 impl<const MIN: irang, const MAX: irang> Ranged<MIN, MAX> 
 where
-AlignWrap<{memlayout(MIN, MAX)}>: Aligner,
 [u8; memlayout(MIN, MAX).bytes()]:
 {
     #[doc(hidden)]
@@ -369,7 +371,6 @@ macro_rules! r {
 
 impl<const MIN: irang, const MAX: irang> core::fmt::Display for Ranged<MIN, MAX> 
 where
-AlignWrap<{memlayout(MIN, MAX)}>: Aligner,
 [(); memlayout(MIN, MAX).bytes()]:,
 {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
@@ -379,7 +380,6 @@ AlignWrap<{memlayout(MIN, MAX)}>: Aligner,
 
 impl<const MIN: irang, const MAX: irang> core::fmt::Debug for Ranged<MIN, MAX> 
 where
-AlignWrap<{memlayout(MIN, MAX)}>: Aligner,
 [(); memlayout(MIN, MAX).bytes()]:,
 {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
@@ -395,10 +395,7 @@ AlignWrap<{memlayout(MIN, MAX)}>: Aligner,
 
 impl<const AMIN: irang, const AMAX: irang, const BMIN: irang, const BMAX: irang>
 const core::ops::Add<Ranged<BMIN, BMAX>> for Ranged<AMIN, AMAX>
-where 
-    AlignWrap<{memlayout(AMIN, AMAX)}>: Aligner,
-    AlignWrap<{memlayout(BMIN, BMAX)}>: Aligner,
-    AlignWrap<{memlayout(AMIN+BMIN, AMAX+BMAX)}>: Aligner,
+where
     [(); memlayout(AMIN, AMAX).bytes()]:,
     [(); memlayout(BMIN, BMAX).bytes()]:,
     [(); memlayout(AMIN+BMIN, AMAX+BMAX).bytes()]:,
@@ -415,9 +412,6 @@ where
 impl<const AMIN: irang, const AMAX: irang, const BMIN: irang, const BMAX: irang>
 const core::ops::Sub<Ranged<BMIN, BMAX>> for Ranged<AMIN, AMAX>
 where
-    AlignWrap<{memlayout(AMIN, AMAX)}>: Aligner,
-    AlignWrap<{memlayout(BMIN, BMAX)}>: Aligner,
-    AlignWrap<{memlayout(AMIN-BMAX, AMAX-BMIN)}>: Aligner,
     [(); memlayout(AMIN, AMAX).bytes()]:,
     [(); memlayout(BMIN, BMAX).bytes()]:,
     [(); memlayout(AMIN-BMAX, AMAX-BMIN).bytes()]:,
@@ -461,9 +455,6 @@ const fn min_4(vals: (irang,irang,irang,irang))->irang {
 impl<const AMIN: irang, const AMAX: irang, const BMIN: irang, const BMAX: irang>
 const core::ops::Mul<Ranged<BMIN, BMAX>> for Ranged<AMIN, AMAX>
 where
-    AlignWrap<{memlayout(AMIN, AMAX)}>: Aligner,
-    AlignWrap<{memlayout(BMIN, BMAX)}>: Aligner,
-    AlignWrap<{memlayout(min_cross(AMIN, AMAX, BMIN, BMAX), max_cross(AMIN, AMAX, BMIN, BMAX))}>: Aligner,
     [(); memlayout(AMIN, AMAX).bytes()]:,
     [(); memlayout(BMIN, BMAX).bytes()]:,
     [(); memlayout(min_cross(AMIN, AMAX, BMIN, BMAX), max_cross(AMIN, AMAX, BMIN, BMAX)).bytes()]:,
@@ -490,10 +481,7 @@ pub const fn allow_division(bmin: irang, bmax: irang) -> OperationPossibility {
 
 impl<const AMIN: irang, const AMAX: irang, const BMIN: irang, const BMAX: irang>
 const core::ops::Div<Ranged<BMIN, BMAX>> for Ranged<AMIN, AMAX>
-where 
-    AlignWrap<{memlayout(AMIN, AMAX)}>: Aligner,
-    AlignWrap<{memlayout(BMIN, BMAX)}>: Aligner,
-    AlignWrap<{memlayout(singleside_div_min(AMIN, AMAX, BMIN, BMAX), singleside_div_max(AMIN, AMAX, BMIN, BMAX))}>: Aligner,
+where
     [(); memlayout(AMIN, AMAX).bytes()]:,
     [(); memlayout(BMIN, BMAX).bytes()]:,
     [(); memlayout(singleside_div_min(AMIN, AMAX, BMIN, BMAX), singleside_div_max(AMIN, AMAX, BMIN, BMAX)).bytes()]:,
@@ -509,9 +497,7 @@ where
 
 impl<const AMIN: irang, const AMAX: irang, const BMIN: irang, const BMAX: irang>
 const core::cmp::PartialEq<Ranged<BMIN, BMAX>> for Ranged<AMIN, AMAX>
-where 
-    AlignWrap<{memlayout(AMIN, AMAX)}>: Aligner,
-    AlignWrap<{memlayout(BMIN, BMAX)}>: Aligner,
+where
     [(); memlayout(AMIN, AMAX).bytes()]:,
     [(); memlayout(BMIN, BMAX).bytes()]:,
 {
@@ -523,7 +509,6 @@ where
 impl<const AMIN: irang, 
 const AMAX: irang> core::cmp::Eq for Ranged<AMIN, AMAX>
 where 
-    AlignWrap<{memlayout(AMIN, AMAX)}>: Aligner,
     [(); memlayout(AMIN, AMAX).bytes()]:,
     {}
 
@@ -533,9 +518,7 @@ macro_rules! rem_trait {
     ($tp:ty) => {
         impl<const VAL: irang> const core::ops::Rem<Ranged<VAL, VAL>> for $tp 
         where
-            AlignWrap<{memlayout(VAL, VAL)}>: Aligner,
             [(); memlayout(VAL, VAL).bytes()]:,
-            AlignWrap<{memlayout(0, VAL.abs()-1)}>: Aligner,
             [(); memlayout(0, VAL.abs()-1).bytes()]:,
         {
             type Output = Ranged<0, {VAL.abs()-1}>;
@@ -629,7 +612,6 @@ macro_rules! converter_impl {
     ($t: ident) => {
         impl<const MIN: irang, const MAX: irang> From<Ranged<MIN, MAX>> for $t
         where
-        AlignWrap<{memlayout(MIN, MAX)}>: Aligner,
         [u8; memlayout(MIN, MAX).bytes()]:,
         Assert<{converter_checkers::$t(MIN, MAX)}>: IsAllowed,
         {
@@ -652,7 +634,6 @@ converter_impl!{i128}
 
 impl<const MIN: irang, const MAX: irang> Ranged<MIN, MAX> 
 where
-AlignWrap<{memlayout(MIN, MAX)}>: Aligner,
 [u8; memlayout(MIN, MAX).bytes()]:,
 {
     converter_fn!{i8}
@@ -674,13 +655,11 @@ AlignWrap<{memlayout(MIN, MAX)}>: Aligner,
 
 impl<const MIN: irang, const MAX: irang> Ranged<MIN, MAX> 
 where
-AlignWrap<{memlayout(MIN, MAX)}>: Aligner,
 [u8; memlayout(MIN, MAX).bytes()]:,
 {
     /// Expand the range conserving the value
     pub const fn expand<const RMIN: irang, const RMAX: irang>(self) -> Ranged<RMIN, RMAX>
     where
-        AlignWrap<{memlayout(RMIN, RMAX)}>: Aligner,
         [u8; memlayout(RMIN, RMAX).bytes()]:,
         Assert<{expansion_possible(MIN, MAX, RMIN, RMAX)}>: IsAllowed,
     {

@@ -33,6 +33,7 @@ impl IntLayout {
     }
 }
 
+impl<const N: IntLayout> Aligner for AlignWrap<N> { default type A = i128; }
 
 // Convert the IntLayout into the corresponding type
 #[doc(hidden)]
@@ -52,8 +53,7 @@ impl Aligner for AlignWrap<{IntLayout::i128}> { type A = i128; }
 #[derive(Clone, Copy)]
 pub(crate) struct NumberBytes<const LAYOUT: IntLayout>
 where
-    AlignWrap<LAYOUT>: Aligner,
-    [u8; LAYOUT.bytes()]:,
+    [(); LAYOUT.bytes()]:,
 {
     // Ensure the alignment
     _align: [<AlignWrap<LAYOUT> as Aligner>::A; 0],
@@ -65,7 +65,6 @@ where
 // This code heavily relies on optimization
 impl<const LAYOUT: IntLayout> NumberBytes<LAYOUT>
 where
-    AlignWrap<LAYOUT> : Aligner,
     [(); LAYOUT.bytes()]:
 {
     const fn new() -> Self { Self{_align: [], bytes: [0; LAYOUT.bytes()]} }
@@ -74,71 +73,11 @@ where
     pub(crate) const fn from_irang(v: irang) -> Self {
         let mut x = Self::new();
         let bytes = v.to_ne_bytes();
-        match LAYOUT {
-            IntLayout::i8 => {
-                x.bytes[0] = bytes[0];
-            }
-            IntLayout::u8 => {
-                x.bytes[0] = bytes[0];
-            }
-            IntLayout::i16 => {
-                x.bytes[0] = bytes[0];
-                x.bytes[1] = bytes[1];
-            }
-            IntLayout::u16 => {
-                x.bytes[0] = bytes[0];
-                x.bytes[1] = bytes[1];
-            }
-            IntLayout::i32 => {
-                x.bytes[0] = bytes[0];
-                x.bytes[1] = bytes[1];
-                x.bytes[2] = bytes[2];
-                x.bytes[3] = bytes[3];
-            }
-            IntLayout::u32 => {
-                x.bytes[0] = bytes[0];
-                x.bytes[1] = bytes[1];
-                x.bytes[2] = bytes[2];
-                x.bytes[3] = bytes[3];
-            }
-            IntLayout::i64 => {
-                x.bytes[0] = bytes[0];
-                x.bytes[1] = bytes[1];
-                x.bytes[2] = bytes[2];
-                x.bytes[3] = bytes[3];
-                x.bytes[4] = bytes[4];
-                x.bytes[5] = bytes[5];
-                x.bytes[6] = bytes[6];
-                x.bytes[7] = bytes[7];
-            }
-            IntLayout::u64 => {
-                x.bytes[0] = bytes[0];
-                x.bytes[1] = bytes[1];
-                x.bytes[2] = bytes[2];
-                x.bytes[3] = bytes[3];
-                x.bytes[4] = bytes[4];
-                x.bytes[5] = bytes[5];
-                x.bytes[6] = bytes[6];
-                x.bytes[7] = bytes[7];
-            }
-            IntLayout::i128 => {
-                x.bytes[0] = bytes[0];
-                x.bytes[1] = bytes[1];
-                x.bytes[2] = bytes[2];
-                x.bytes[3] = bytes[3];
-                x.bytes[4] = bytes[4];
-                x.bytes[5] = bytes[5];
-                x.bytes[6] = bytes[6];
-                x.bytes[7] = bytes[7];
-                x.bytes[8] = bytes[8];
-                x.bytes[9] = bytes[9];
-                x.bytes[10] = bytes[10];
-                x.bytes[11] = bytes[11];
-                x.bytes[12] = bytes[12];
-                x.bytes[13] = bytes[13];
-                x.bytes[14] = bytes[14];
-                x.bytes[15] = bytes[15];
-            }
+
+        let mut i=0;
+        while i < x.bytes.len() {
+            x.bytes[i] = bytes[i];
+            i += 1;
         }
 
         x
