@@ -275,23 +275,23 @@ fn convert() {
     assert_eq!(20, u64::from(r!([0 100] 20)));
     assert_eq!(20, i128::from(r!([0 100] 20)));
 
-    let x: Ranged<{-128},127> = 10_i8.as_ranged();
+    let x: Ranged<-128,127> = 10_i8.as_ranged();
     assert_eq!(r![10], x);
     let x: Ranged<0,255> = 10_u8.as_ranged();
     assert_eq!(r![10], x);
-    let x: Ranged<{-32768},32767> = 10_i16.as_ranged();
+    let x: Ranged<-32768,32767> = 10_i16.as_ranged();
     assert_eq!(r![10], x);
     let x: Ranged<0,65535> = 10_u16.as_ranged();
     assert_eq!(r![10], x);
-    let x: Ranged<{-2147483648},2147483647> = 10_i32.as_ranged();
+    let x: Ranged<-2147483648,2147483647> = 10_i32.as_ranged();
     assert_eq!(r![10], x);
     let x: Ranged<0,4294967295> = 10_u32.as_ranged();
     assert_eq!(r![10], x);
-    let x: Ranged<{-9223372036854775808}, 9223372036854775807> = 10_i64.as_ranged();
+    let x: Ranged<-9223372036854775808, 9223372036854775807> = 10_i64.as_ranged();
     assert_eq!(r![10], x);
     let x: Ranged<0,18446744073709551615> = 10_u64.as_ranged();
     assert_eq!(r![10], x);
-    let x: Ranged<{-170141183460469231731687303715884105728}, 170141183460469231731687303715884105727> = 10_i128.as_ranged();
+    let x: Ranged<-170141183460469231731687303715884105728, 170141183460469231731687303715884105727> = 10_i128.as_ranged();
     assert_eq!(r![10], x);
 }
 

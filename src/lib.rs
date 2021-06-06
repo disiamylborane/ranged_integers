@@ -240,6 +240,7 @@
 #![feature(const_evaluatable_checked)]
 #![feature(const_panic)]
 #![feature(const_trait_impl)]
+#![feature(const_raw_ptr_deref)]
 #![feature(specialization)]
 
 #![warn(missing_docs)]
@@ -513,34 +514,6 @@ where
     {}
 
 
-
-macro_rules! rem_trait {
-    ($tp:ty) => {
-        impl<const VAL: irang> const core::ops::Rem<Ranged<VAL, VAL>> for $tp 
-        where
-            [(); memlayout(VAL, VAL).bytes()]:,
-            [(); memlayout(0, VAL.abs()-1).bytes()]:,
-        {
-            type Output = Ranged<0, {VAL.abs()-1}>;
-        
-            fn rem(self, _rhs: Ranged<VAL, VAL>) -> Self::Output {
-                unsafe { Ranged::__unsafe_new(self as irang % VAL) }
-            }
-        }
-    };
-}
-
-rem_trait!{i8}
-rem_trait!{u8}
-rem_trait!{i16}
-rem_trait!{u16}
-rem_trait!{i32}
-rem_trait!{u32}
-rem_trait!{i64}
-rem_trait!{u64}
-rem_trait!{i128}
-
-
 /// Convert int value to Ranged according to its bounds
 ///
 /// Implemented for integer primitives.
@@ -552,101 +525,66 @@ pub trait AsRanged {
     fn as_ranged(self) -> Self::Res;
 }
 
-macro_rules! make_ranged {
-    ($t: ident) => {
-        impl AsRanged for $t {
-            type Res = Ranged<{core::$t::MIN as irang},{core::$t::MAX as irang}>;
-            fn as_ranged(self) -> Self::Res {
-                unsafe {Self::Res::__unsafe_new(self as irang)}
+
+macro_rules! int_ranged_converters {
+    ($($t: ident)+) => {
+        
+        #[doc(hidden)]
+        pub mod converter_checkers {
+            use super::OperationPossibility;
+            use super::irang;
+
+            $(
+                #[doc(hidden)] pub const fn $t (min: irang, max: irang)->OperationPossibility {
+                    OperationPossibility::allow_if(min>=core::$t::MIN as irang && max<=core::$t::MAX as irang)
+                }
+            )+
+        }
+
+        $(
+            impl<const MIN: irang, const MAX: irang> Ranged<MIN, MAX> 
+            where
+            [u8; memlayout(MIN, MAX).bytes()]:,
+            {
+                #[doc=concat!("Convert a Ranged into ", stringify!($t), " value")]
+                pub const fn $t(self) -> $t 
+                where Assert<{converter_checkers::$t(MIN, MAX)}>: IsAllowed
+                {
+                    self.get() as $t
+                }
             }
-        }
-    }
-}
 
-make_ranged!{i8}
-make_ranged!{u8}
-make_ranged!{i16}
-make_ranged!{u16}
-make_ranged!{i32}
-make_ranged!{u32}
-make_ranged!{i64}
-make_ranged!{u64}
-make_ranged!{i128}
-
-
-macro_rules! converter_checker {
-    ($t: ident) => {
-        #[doc(hidden)] pub const fn $t (min: irang, max: irang)->OperationPossibility {
-            OperationPossibility::allow_if(min>=core::$t::MIN as irang && max<=core::$t::MAX as irang)
-        }
-    };
-}
-
-#[doc(hidden)]
-pub mod converter_checkers {
-    use super::OperationPossibility;
-    use super::irang;
-
-    converter_checker!{i8}
-    converter_checker!{u8}
-    converter_checker!{i16}
-    converter_checker!{u16}
-    converter_checker!{i32}
-    converter_checker!{u32}
-    converter_checker!{i64}
-    converter_checker!{u64}
-    converter_checker!{i128}
-}
-
-macro_rules! converter_fn {
-    ($t: ident) => {
-        #[doc=concat!("Convert a Ranged into ", stringify!($t), " value")]
-        pub const fn $t(self) -> $t 
-        where Assert<{converter_checkers::$t(MIN, MAX)}>: IsAllowed
-        {
-            self.get() as $t
-        }
-    };
-}
-macro_rules! converter_impl {
-    ($t: ident) => {
-        impl<const MIN: irang, const MAX: irang> From<Ranged<MIN, MAX>> for $t
-        where
-        [u8; memlayout(MIN, MAX).bytes()]:,
-        Assert<{converter_checkers::$t(MIN, MAX)}>: IsAllowed,
-        {
-            fn from(a: Ranged<MIN, MAX>) -> Self {
-                a.$t()
+            impl<const MIN: irang, const MAX: irang> From<Ranged<MIN, MAX>> for $t
+            where
+                [u8; memlayout(MIN, MAX).bytes()]:,
+                Assert<{converter_checkers::$t(MIN, MAX)}>: IsAllowed,
+            {
+                fn from(a: Ranged<MIN, MAX>) -> Self { a.$t() }
             }
-        }
+
+            impl AsRanged for $t {
+                type Res = Ranged<{core::$t::MIN as irang},{core::$t::MAX as irang}>;
+                fn as_ranged(self) -> Self::Res {
+                    unsafe {Self::Res::__unsafe_new(self as irang)}
+                }
+            }
+
+            impl<const VAL: irang> const core::ops::Rem<Ranged<VAL, VAL>> for $t
+            where
+                [(); memlayout(VAL, VAL).bytes()]:,
+                [(); memlayout(0, VAL.abs()-1).bytes()]:,
+            {
+                type Output = Ranged<0, {VAL.abs()-1}>;
+
+                fn rem(self, _rhs: Ranged<VAL, VAL>) -> Self::Output {
+                    unsafe { Ranged::__unsafe_new(self as irang % VAL) }
+                }
+            }
+        )+
     };
 }
 
-converter_impl!{i8}
-converter_impl!{u8}
-converter_impl!{i16}
-converter_impl!{u16}
-converter_impl!{i32}
-converter_impl!{u32}
-converter_impl!{i64}
-converter_impl!{u64}
-converter_impl!{i128}
-
-impl<const MIN: irang, const MAX: irang> Ranged<MIN, MAX> 
-where
-[u8; memlayout(MIN, MAX).bytes()]:,
-{
-    converter_fn!{i8}
-    converter_fn!{u8}
-    converter_fn!{i16}
-    converter_fn!{u16}
-    converter_fn!{i32}
-    converter_fn!{u32}
-    converter_fn!{i64}
-    converter_fn!{u64}
-    converter_fn!{i128}
-}
-
+int_ranged_converters!{i8 u8 i16 u16 i32 u32 i64 u64 i128}
 
 
 #[doc(hidden)] pub const fn expansion_possible(smin: irang, smax: irang, rmin: irang, rmax: irang) -> OperationPossibility {
