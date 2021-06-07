@@ -244,6 +244,18 @@ fn div() {
 }
 
 #[test]
+fn rem() {
+    let a = r![25] % r![20];
+    assert_eq!(a, r![5]);
+
+    let a: Ranged<0, 19> = r![25] % r![[1 20] 13];
+    assert_eq!(a, r![12]);
+
+    let a: Ranged<-19, 0> = r![-25] % r![[1 20] 13];
+    assert_eq!(a, r![-12]);
+}
+
+#[test]
 fn eq() {
     let a = r![20];
     let b = r![40];

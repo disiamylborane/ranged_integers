@@ -293,6 +293,10 @@ where
     v: NumberBytes<{memlayout(MIN, MAX)}>
 }
 
+#[doc(hidden)]
+pub const fn allow_creation(min: irang, v: irang, max: irang) -> bool {
+    min <= v && v <= max
+}
 
 impl<const MIN: irang, const MAX: irang> Ranged<MIN, MAX> 
 where
@@ -303,10 +307,8 @@ where
         Ranged{v: NumberBytes::from_irang(n)}
     }
 
-    /// Create a Ranged value with a runtime bounds-check
+    /// Create a Ranged value with a runtime bounds checking
     pub const fn new(n: irang) -> Option<Self>
-    where 
-        Assert<{OperationPossibility::allow_if(MIN<MAX)}>: IsAllowed,
     {
         if (MIN <= n) && (n <= MAX) {
             Some( unsafe {Self::__unsafe_new(n)} )
@@ -315,6 +317,15 @@ where
             None
         }
     }
+
+    /// Create a Ranged value with a compile time bounds checking
+    pub const fn create_const<const V: irang>() -> Self
+    where 
+        Assert<{OperationPossibility::allow_if(allow_creation(MIN,V,MAX))}>: IsAllowed,
+    {
+        unsafe {Self::__unsafe_new(V)}
+    }
+
 
     /// Convert Ranged to a primitive
     const fn get(self) -> irang {
@@ -352,11 +363,7 @@ where
 macro_rules! r {
     ([$min:literal $max:literal] $x:expr) => {
         {
-            const __Z : Ranged<$min, $max> = {
-                assert!( ($min <= $x) && ($x <= $max) );
-                unsafe {Ranged::__unsafe_new($x)}
-            };
-            __Z
+            Ranged::<{$min}, {$max}>::create_const::<$x>()
         }
     };
 
@@ -444,6 +451,12 @@ const fn max_4(vals: (irang,irang,irang,irang))->irang {
 const fn min_4(vals: (irang,irang,irang,irang))->irang {
     reduce!(min_irang, vals.0, vals.1, vals.2, vals.3)
 }
+const fn max_2(vals: (irang,irang))->irang {
+    reduce!(max_irang, vals.0, vals.1)
+}
+const fn min_2(vals: (irang,irang))->irang {
+    reduce!(min_irang, vals.0, vals.1)
+}
 
 #[doc(hidden)] pub const fn max_cross(amin: irang, amax: irang, bmin: irang, bmax: irang)->irang {
     max_4((amin*bmin, amin*bmax, amax*bmin, amax*bmax))
@@ -495,6 +508,57 @@ where
         unsafe{ Ranged::__unsafe_new(self.get() / rhs.get()) }
     }
 }
+
+#[doc(hidden)] pub const fn singleside_rem_min(amin: irang, amax: irang, bmin: irang, bmax: irang) -> irang {
+    if amin == amax && bmin == bmax { amin%bmin } 
+    else if amin >= 0 { 0 } 
+    else { 1 - max_2((bmax.abs(), bmin.abs())) }
+}
+#[doc(hidden)] pub const fn singleside_rem_max(amin: irang, amax: irang, bmin: irang, bmax: irang) -> irang {
+    if amin == amax && bmin == bmax { amin%bmin } 
+    else if amax <= 0 { 0 } 
+    else { max_2((bmax.abs(), bmin.abs()))-1 }
+}
+
+impl<const AMIN: irang, const AMAX: irang, const BMIN: irang, const BMAX: irang>
+const core::ops::Rem<Ranged<BMIN, BMAX>> for Ranged<AMIN, AMAX>
+where
+    [(); memlayout(AMIN, AMAX).bytes()]:,
+    [(); memlayout(BMIN, BMAX).bytes()]:,
+    [(); memlayout(singleside_rem_min(AMIN, AMAX, BMIN, BMAX), singleside_rem_max(AMIN, AMAX, BMIN, BMAX)).bytes()]:,
+
+    Assert<{allow_division(BMIN, BMAX)}>: IsAllowed
+{
+    type Output = Ranged<{singleside_rem_min(AMIN, AMAX, BMIN, BMAX)}, {singleside_rem_max(AMIN, AMAX, BMIN, BMAX)}>;
+
+    fn rem(self, rhs: Ranged<BMIN, BMAX>) -> Self::Output {
+        unsafe{ Ranged::__unsafe_new(self.get() % rhs.get()) }
+    }
+}
+
+/*
+...
+    let a:Ranged<-10,20>  = -r![[-20 10] 10];
+leads to an error
+
+    Ranged::<{$min}, {$max}>::create_const::<$x>()
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `-10_i128`, found `-20_i128`
+...
+*/
+impl<const MIN: irang, const MAX: irang>
+const core::ops::Neg for Ranged<MIN, MAX>
+where
+    [(); memlayout(MIN, MAX).bytes()]:,
+    [(); memlayout(-MAX, -MIN).bytes()]:,
+{
+    type Output = Ranged<{-MAX}, {-MIN}>;
+
+    fn neg(self) -> Self::Output {
+        unsafe{ Ranged::__unsafe_new(-self.get()) }
+    }
+}
+
+
 
 impl<const AMIN: irang, const AMAX: irang, const BMIN: irang, const BMAX: irang>
 const core::cmp::PartialEq<Ranged<BMIN, BMAX>> for Ranged<AMIN, AMAX>
