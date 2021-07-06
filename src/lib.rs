@@ -569,6 +569,10 @@ where
     fn eq(&self, rhs: &Ranged<BMIN, BMAX>) -> bool {
         self.get() == rhs.get()
     }
+
+    fn ne(&self, other: &Ranged<BMIN, BMAX>) -> bool {
+        !self.eq(other)
+    }
 }
 
 impl<const AMIN: irang, 
