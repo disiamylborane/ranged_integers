@@ -5,21 +5,19 @@
 use super::irang;
 
 // A helper trait specifying the alignment
-pub trait Aligner
-{
+pub trait Aligner {
     type A: Copy;
 }
 
 // A helper enum specifying the amount of bytes needed for a Ranged
 #[derive(PartialEq, Eq, Copy, Clone)]
 #[allow(non_camel_case_types)]
-pub enum IntLayout {
-    i8, u8, i16, u16, i32, u32, i64, u64, i128
-}
+pub enum IntLayout {i8, u8, i16, u16, i32, u32, i64, u64, i128}
+
 impl IntLayout {
+    #[must_use]
     #[doc(hidden)]
     pub const fn bytes(self) -> usize {
-
         macro_rules! get_typesize {
             (  $($tt:ident)* ) => {
                 match self {
@@ -30,32 +28,51 @@ impl IntLayout {
             };
         }
 
-        get_typesize!{ i8 u8 i16 u16 i32 u32 i64 u64 i128 }
-
+        get_typesize! { i8 u8 i16 u16 i32 u32 i64 u64 i128 }
     }
 }
 
-impl<const N: IntLayout> Aligner for AlignWrap<N> { default type A = i128; }
+impl<const N: IntLayout> Aligner for AlignWrap<N> {
+    default type A = i128;
+}
 
 // Convert the IntLayout into the corresponding type
 #[doc(hidden)]
 #[derive(Copy, Clone)]
 pub struct AlignWrap<const N: IntLayout>;
-impl Aligner for AlignWrap<{IntLayout::i8}> { type A = i8; }
-impl Aligner for AlignWrap<{IntLayout::u8}> { type A = u8; }
-impl Aligner for AlignWrap<{IntLayout::i16}> { type A = i16; }
-impl Aligner for AlignWrap<{IntLayout::u16}> { type A = u16; }
-impl Aligner for AlignWrap<{IntLayout::i32}> { type A = i32; }
-impl Aligner for AlignWrap<{IntLayout::u32}> { type A = u32; }
-impl Aligner for AlignWrap<{IntLayout::i64}> { type A = i64; }
-impl Aligner for AlignWrap<{IntLayout::u64}> { type A = u64; }
-impl Aligner for AlignWrap<{IntLayout::i128}> { type A = i128; }
+impl Aligner for AlignWrap<{ IntLayout::i8 }> {
+    type A = i8;
+}
+impl Aligner for AlignWrap<{ IntLayout::u8 }> {
+    type A = u8;
+}
+impl Aligner for AlignWrap<{ IntLayout::i16 }> {
+    type A = i16;
+}
+impl Aligner for AlignWrap<{ IntLayout::u16 }> {
+    type A = u16;
+}
+impl Aligner for AlignWrap<{ IntLayout::i32 }> {
+    type A = i32;
+}
+impl Aligner for AlignWrap<{ IntLayout::u32 }> {
+    type A = u32;
+}
+impl Aligner for AlignWrap<{ IntLayout::i64 }> {
+    type A = i64;
+}
+impl Aligner for AlignWrap<{ IntLayout::u64 }> {
+    type A = u64;
+}
+impl Aligner for AlignWrap<{ IntLayout::i128 }> {
+    type A = i128;
+}
 
 // The internal representation of Ranged: an array of bytes with the length and alignmemt ensured
 #[derive(Clone, Copy)]
 pub(crate) struct NumberBytes<const LAYOUT: IntLayout>
 where
-    [(); LAYOUT.bytes()]:,
+    [(); LAYOUT.bytes()]: ,
 {
     // Ensure the alignment
     _align: [<AlignWrap<LAYOUT> as Aligner>::A; 0],
@@ -67,9 +84,9 @@ where
 // This code heavily relies on optimization
 impl<const LAYOUT: IntLayout> NumberBytes<LAYOUT>
 where
-    [(); LAYOUT.bytes()]:
+    [(); LAYOUT.bytes()]: ,
 {
-    #[inline(always)]
+    #[inline]
     pub(crate) const fn from_irang(v: irang) -> Self {
         macro_rules! conv_from_irang {
             (  $($tt:ident)* ) => {
@@ -83,10 +100,10 @@ where
             };
         }
 
-        conv_from_irang!(i8 u8 i16 u16 i32 u32 i64 u64 i128)
+        conv_from_irang! {i8 u8 i16 u16 i32 u32 i64 u64 i128}
     }
 
-    #[inline(always)]
+    #[inline]
     pub(crate) const fn to_irang(self) -> irang {
         macro_rules! conv_to_irang {
             (  $($tt:ident)* ) => {
@@ -100,6 +117,6 @@ where
             };
         }
 
-        conv_to_irang!{ i8 u8 i16 u16 i32 u32 i64 u64 i128 }
+        conv_to_irang! { i8 u8 i16 u16 i32 u32 i64 u64 i128 }
     }
 }

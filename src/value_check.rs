@@ -33,10 +33,9 @@ pub enum OperationPossibility {
 }
 
 impl OperationPossibility {
-    #[doc(hidden)] pub const fn allow_if(cond: bool)->Self {
-        match cond {
-            true => Self::Allowed,
-            false => Self::Forbidden
-        }
+    #[must_use]
+    #[doc(hidden)]
+    pub const fn allow_if(cond: bool)->Self {
+        if cond { Self::Allowed } else { Self::Forbidden }
     }
 }
