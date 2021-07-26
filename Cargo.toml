@@ -1,11 +1,12 @@
 [package]
 edition = "2018"
 name = "ranged_integers"
-version = "0.3.1"
+version = "0.4.0"
 authors = ["disiamylborane"]
-description = "An integer restricted to a compile-time defined range driven by const generics"
+description = "An integer restricted to a compile-time defined bounds driven by const generics"
 readme = "Readme.md"
 keywords = ["integer"]
 categories = ["data-structures", "no-std", "rust-patterns"]
+license = "MIT"
 license-file = "LICENSE"
 repository = "https://github.com/disiamylborane/ranged_integers"

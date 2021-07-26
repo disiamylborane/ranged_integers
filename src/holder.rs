@@ -9,10 +9,14 @@ pub trait Aligner {
     type A: Copy;
 }
 
+#[derive(PartialEq, Eq, Copy, Clone)]
+#[doc(hidden)]
+pub struct Trivial;
+
 // A helper enum specifying the amount of bytes needed for a Ranged
 #[derive(PartialEq, Eq, Copy, Clone)]
 #[allow(non_camel_case_types)]
-pub enum IntLayout {i8, u8, i16, u16, i32, u32, i64, u64, i128}
+pub enum IntLayout {Trivial, i8, u8, i16, u16, i32, u32, i64, u64, i128}
 
 impl IntLayout {
     #[must_use]
@@ -28,7 +32,7 @@ impl IntLayout {
             };
         }
 
-        get_typesize! { i8 u8 i16 u16 i32 u32 i64 u64 i128 }
+        get_typesize! {Trivial i8 u8 i16 u16 i32 u32 i64 u64 i128 }
     }
 }
 
@@ -40,6 +44,9 @@ impl<const N: IntLayout> Aligner for AlignWrap<N> {
 #[doc(hidden)]
 #[derive(Copy, Clone)]
 pub struct AlignWrap<const N: IntLayout>;
+impl Aligner for AlignWrap<{ IntLayout::Trivial }> {
+    type A = Trivial;
+}
 impl Aligner for AlignWrap<{ IntLayout::i8 }> {
     type A = i8;
 }
@@ -91,6 +98,7 @@ where
         macro_rules! conv_from_irang {
             (  $($tt:ident)* ) => {
                 match LAYOUT {
+                    IntLayout::Trivial => {Self {_align:[], bytes: [0; LAYOUT.bytes()]}}
                     $(
                         IntLayout::$tt => {
                             Self {_align:[], bytes: unsafe{ *((v as $tt).to_ne_bytes().as_ptr() as *const _) }}
@@ -108,6 +116,7 @@ where
         macro_rules! conv_to_irang {
             (  $($tt:ident)* ) => {
                 match LAYOUT {
+                    IntLayout::Trivial => {unreachable!()}
                     $(
                         IntLayout::$tt => {
                             $tt::from_ne_bytes(unsafe{*(self.bytes.as_ptr() as *const _)}) as irang

@@ -18,11 +18,29 @@ fn sizes() {
         };
     }
 
-    sz_align!(i8, Ranged<0,0>);
-    sz_align!(i8, Ranged<10,10>);
-    sz_align!(i8, Ranged<255,255>);
-    sz_align!(i8, Ranged<127,127>);
-    sz_align!(i8, Ranged<-128, -128>);
+    sz_align!((), Ranged<0,0>);
+    sz_align!((), Ranged<1,1>);
+    sz_align!((), Ranged<-1,-1>);
+    sz_align!((), Ranged<100, 100>);
+    sz_align!((), Ranged<-100, -100>);
+    sz_align!((), Ranged<500, 500>);
+    sz_align!((), Ranged<-500, -500>);
+    sz_align!((), Ranged<100000, 100000>);
+    sz_align!((), Ranged<-100000, -100000>);
+    sz_align!((), Ranged<10_000_000_000, 10_000_000_000>);
+    sz_align!((), Ranged<-10_000_000_000, -10_000_000_000>);
+    sz_align!((), Ranged<18446744073709551616, 18446744073709551616>);
+    sz_align!((), Ranged<-18446744073709551616, -18446744073709551616>);
+
+    sz_align!((), Ranged<-32768, -32768>);
+    sz_align!((), Ranged<32767, 32767>);
+    sz_align!((), Ranged<65535, 65535>);
+    sz_align!((), Ranged<65536, 65536>);
+
+    sz_align!(i8, Ranged<10,11>);
+    sz_align!(i8, Ranged<254,255>);
+    sz_align!(i8, Ranged<126,127>);
+    sz_align!(i8, Ranged<-128, -127>);
     sz_align!(i8, Ranged<0,10>);
     sz_align!(i8, Ranged<0,127>);
     sz_align!(i8, Ranged<0,255>);
@@ -34,13 +52,12 @@ fn sizes() {
     sz_align!(i16, Ranged<-32768, 32767>);
     sz_align!(i16, Ranged<0, 32768>);
     sz_align!(i16, Ranged<0, 65535>);
-    sz_align!(i16, Ranged<-32768, -32768>);
-    sz_align!(i16, Ranged<32767, 32767>);
-    sz_align!(i16, Ranged<65535, 65535>);
+    sz_align!(i16, Ranged<-32768, -32767>);
+    sz_align!(i16, Ranged<32766, 32767>);
+    sz_align!(i16, Ranged<65534, 65535>);
 
     sz_align!(i32, Ranged<-32768, 32768>);
     sz_align!(i32, Ranged<0, 65536>);
-    sz_align!(i32, Ranged<65536, 65536>);
 
     sz_align!(i32, Ranged<0, 4294967295>);
     sz_align!(i32, Ranged<-2147483648, 2147483647>);
