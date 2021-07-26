@@ -186,7 +186,8 @@
 //!
 //! ## Arithmetics
 //!
-//! Currently addition, subtraction, multiplication, division and negation operations are implemented.
+//! Currently addition, subtraction, multiplication, division and negation operations,
+//! min() and max() functions are implemented.
 //! The bounds of values are automatically recalculated:
 //!
 //! ```
@@ -208,6 +209,9 @@
 //!
 //! let n = -x;
 //! let check_neg: Ranged<-6, -1> = n;  // Assertion assignment
+//! 
+//! let min: Ranged<1,6> = x.min(a);  // x.min(a) is never less than 1 and greater than 6
+//! let max: Ranged<2,12> = x.max(a); // x.max(a) is never less than 2 and greater than 12
 //! ```
 //!
 //! The division is allowed only if it's impossible to store "0" in the divisor:
@@ -237,6 +241,7 @@
 #![feature(const_trait_impl)]
 #![feature(const_raw_ptr_deref)]
 #![feature(specialization)]
+
 #![deny(missing_docs)]
 #![deny(clippy::nursery)]
 #![warn(clippy::pedantic)]
@@ -299,9 +304,7 @@ impl<const MIN: irang, const MAX: irang> Ranged<MIN, MAX>
 where
     [u8; memlayout(MIN, MAX).bytes()]: ,
 {
-    #[must_use]
-    #[doc(hidden)]
-    pub const unsafe fn __unsafe_new(n: irang) -> Self {
+    const unsafe fn __unsafe_new(n: irang) -> Self {
         Self {
             v: NumberBytes::from_irang(n),
         }
@@ -350,13 +353,13 @@ where
 #[macro_export]
 macro_rules! r {
     ([$min:literal $max:literal] $x:expr) => {
-        $crate::Ranged::<{ $min }, { $max }>::create_const::<{ $x }>()
+        $crate::Ranged::<$min, $max>::create_const::<$x>()
     };
     ([] $v:expr) => {
-        $crate::Ranged::create_const::<{ $v }>()
+        $crate::Ranged::create_const::<$v>()
     };
     ($v:expr) => {
-        $crate::Ranged::<{ $v }, { $v }>::create_const::<$v>()
+        $crate::Ranged::<$v, $v>::create_const::<$v>()
     };
 }
 
@@ -385,9 +388,9 @@ where
 impl<const AMIN: irang, const AMAX: irang, const BMIN: irang, const BMAX: irang> const
     core::ops::Add<Ranged<BMIN, BMAX>> for Ranged<AMIN, AMAX>
 where
-    [(); memlayout(AMIN, AMAX).bytes()]: ,
-    [(); memlayout(BMIN, BMAX).bytes()]: ,
-    [(); memlayout(AMIN + BMIN, AMAX + BMAX).bytes()]: ,
+    [(); memlayout(AMIN, AMAX).bytes()]:,
+    [(); memlayout(BMIN, BMAX).bytes()]:,
+    [(); memlayout(AMIN + BMIN, AMAX + BMAX).bytes()]:,
 {
     type Output = Ranged<{ AMIN + BMIN }, { AMAX + BMAX }>;
 
@@ -418,14 +421,16 @@ macro_rules! reduce {
         }
     };
 }
-const fn min_irang(x: irang, y: irang) -> irang {
+#[doc(hidden)] #[must_use]
+pub const fn min_irang(x: irang, y: irang) -> irang {
     if x < y {
         x
     } else {
         y
     }
 }
-const fn max_irang(x: irang, y: irang) -> irang {
+#[doc(hidden)] #[must_use]
+pub const fn max_irang(x: irang, y: irang) -> irang {
     if x > y {
         x
     } else {
@@ -438,10 +443,6 @@ const fn max_4(vals: (irang, irang, irang, irang)) -> irang {
 const fn min_4(vals: (irang, irang, irang, irang)) -> irang {
     reduce!(min_irang, vals.0, vals.1, vals.2, vals.3)
 }
-const fn max_2(vals: (irang, irang)) -> irang {
-    reduce!(max_irang, vals.0, vals.1)
-}
-
 #[must_use]
 #[doc(hidden)]
 pub const fn max_cross(a_min: irang, a_max: irang, b_min: irang, b_max: irang) -> irang {
@@ -524,7 +525,7 @@ pub const fn singleside_rem_min(a_min: irang, a_max: irang, b_min: irang, b_max:
     } else if a_min >= 0 {
         0
     } else {
-        1 - max_2((b_max.abs(), b_min.abs()))
+        1 - max_irang(b_max.abs(), b_min.abs())
     }
 }
 #[must_use]
@@ -535,7 +536,7 @@ pub const fn singleside_rem_max(a_min: irang, a_max: irang, b_min: irang, b_max:
     } else if a_max <= 0 {
         0
     } else {
-        max_2((b_max.abs(), b_min.abs())) - 1
+        max_irang(b_max.abs(), b_min.abs()) - 1
     }
 }
 
@@ -671,6 +672,7 @@ macro_rules! signed_ranged_rem {
             where
                 [(); memlayout(VAL, VAL).bytes()]:,
                 [(); memlayout(1-VAL.abs(), VAL.abs()-1).bytes()]:,
+                Assert<{ allow_division(VAL, VAL) }>: IsAllowed,
             {
                 type Output = Ranged<{1-VAL.abs()}, {VAL.abs()-1}>;
 
@@ -718,6 +720,32 @@ where [u8; memlayout(MIN, MAX).bytes()]:
         Assert<{ expansion_possible(MIN, MAX, RMIN, RMAX) }>: IsAllowed,
     {
         unsafe { Ranged::__unsafe_new(self.get()) }
+    }
+
+    /// Convert to the other Ranged, returning None if the value is out of range
+    pub const fn try_expand<const RMIN: irang, const RMAX: irang>(self) -> Option<Ranged<RMIN, RMAX>>
+    where [u8; memlayout(RMIN, RMAX).bytes()]: {
+        Ranged::<RMIN, RMAX>::new(self.get())
+    }
+
+    /// Returns the minimum of two values
+    pub const fn min<const BMIN: irang, const BMAX: irang>(self, other: Ranged<BMIN,BMAX>)
+             -> Ranged< {min_irang(MIN, BMIN)}, {min_irang(MAX, BMAX)} >
+    where 
+        [u8; memlayout(BMIN, BMAX).bytes()]:,
+        [u8; memlayout(min_irang(MIN, BMIN), min_irang(MAX, BMAX)).bytes()]:
+    {
+        unsafe { Ranged::__unsafe_new(min_irang(self.get(), other.get() )) }
+    }
+
+    /// Returns the maximum of two values
+    pub const fn max<const BMIN: irang, const BMAX: irang>(self, other: Ranged<BMIN,BMAX>)
+             -> Ranged< {max_irang(MIN, BMIN)}, {max_irang(MAX, BMAX)} >
+    where 
+        [u8; memlayout(BMIN, BMAX).bytes()]:,
+        [u8; memlayout(max_irang(MIN, BMIN), max_irang(MAX, BMAX)).bytes()]:
+    {
+        unsafe { Ranged::__unsafe_new(max_irang(self.get(), other.get() )) }
     }
 }
 

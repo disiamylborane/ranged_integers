@@ -247,11 +247,32 @@ fn rem() {
     let a = r!(25) % r!(20);
     assert_eq!(a, r!(5));
 
+    let a = r!(25) % r!(-20);
+    assert_eq!(a, r!(5));
+
     let a: Ranged<0, 19> = r!(25) % r!([1 20] 13);
     assert_eq!(a, r!(12));
 
     let a: Ranged<-19, 0> = r!(-25) % r!([1 20] 13);
     assert_eq!(a, r!(-12));
+
+    let a: Ranged<0, 2> = 7_u8 % r!(3);
+    assert_eq!(a, r!(1));
+
+    let a: Ranged<0, 2> = 7_u8 % r!(-3);
+    assert_eq!(a, r!(1));
+
+    let a: Ranged<-2, 2> = 7_i8 % r!(3);
+    assert_eq!(a, r!(1));
+
+    let a: Ranged<-2, 2> = 7_i8 % r!(-3);
+    assert_eq!(a, r!(1));
+
+    let a: Ranged<-2, 2> = -7_i8 % r!(3);
+    assert_eq!(a, r!(-1));
+
+    let a: Ranged<-2, 2> = -7_i8 % r!(-3);
+    assert_eq!(a, r!(-1));
 }
 
 #[test]
@@ -321,4 +342,19 @@ fn expand() {
 
     let x_ex: Ranged<0, 600> = 10_u8.as_ranged().expand();
     assert_eq!(x_ex, r!(10));
+}
+
+#[test]
+fn minmax() {
+    let x = r!([-100 100] 15);
+    let y = r!([-20 20] 3);
+
+    let min = x.min(y);
+    let max = x.max(y);
+
+    let _: Ranged<-100,20> = min;
+    let _: Ranged<-20,100> = max;
+
+    assert_eq!(min, r!(3));
+    assert_eq!(max, r!(15));
 }

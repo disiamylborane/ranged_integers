@@ -30,26 +30,33 @@ enum MoveType {MoveForward, DoubleSpeed, MoveBackward}
 // Get a die roll using a standard random number generator
 fn roll_die(rng: &mut dyn rand::RngCore) -> Ranged<1, 6> {
     let random: u8 = rng.gen();
-    random % r!(6) + r!(1)  // The consistency is proved at compile time:
-                            // r!(6) means Ranged<6,6> with the value 6
-                            // r!(1) means Ranged<1,1> with the value 1
-                            // u8 % Ranged<6, 6> = Ranged<0, 5>
-                            // Ranged<0, 5> + Ranged<1, 1> = Ranged<1, 6>
+        // The consistency is proved at compile time:
+        // r!(6) means Ranged<6,6> with the value 6
+        // r!(1) means Ranged<1,1> with the value 1
+        // u8 % Ranged<6, 6> = Ranged<0, 5>
+        // Ranged<0, 5> + Ranged<1, 1> = Ranged<1, 6>
+    random % r!(6) + r!(1)
 }
 
-// Calculate where the player must move. The result fits the range -6..=12
-fn move_player(move_type: MoveType, dice_points: Ranged<1, 6>) -> Ranged<-6, 12>  {
+// Calculate where the player must move
+// The result fits the range -6..=12
+fn move_player(
+    mtype: MoveType, 
+    dice_points: Ranged<1, 6>
+) -> Ranged<-6, 12>
+{
     match move_type {
         MoveType::MoveForward => {
-            dice_points.expand()  // Expands 1..=6 to -6..=12
+            // Expand 1..=6 to -6..=12
+            dice_points.expand()
         }
         MoveType::DoubleSpeed => {
-            let mv = dice_points*r!(2);  // mv is Ranged<2, 12>
-            mv.expand()  // Expands to -6..=12
+            let mv = dice_points*r!(2); // Ranged<2, 12>
+            mv.expand() // Expand to -6..=12
         }
         MoveType::MoveBackward => {
-            let mv = -dice_points;  // mv is Ranged<-6, -1>
-            mv.expand()  // Expands to -6..=12
+            let mv = -dice_points; // Ranged<-6, -1>
+            mv.expand() // Expand to -6..=12
         }
     }
 }
