@@ -20,7 +20,8 @@
 //!
 //! The [`Ranged`](struct.Ranged.html) automatically chooses the smallest size possible according
 //! to `MIN..=MAX` range.
-//! It supports i8, u8, i16, u16, i32, u32, i64, u64 and i128 layouts (u128 is not supported).
+//! It supports i8, u8, i16, u16, i32, u32, i64, u64 and i128 layouts (u128 is not supported),
+//! and a special zero-size layout for "constant" values with `MIN==MAX`.
 //!
 //! ```
 //! # use ranged_integers::*; fn main(){
@@ -37,18 +38,18 @@
 //!
 //! The implementation heavily relies on the optimizer. The optimizer... usually doesn't fail.
 //!
-//! ## Ranged and primitive types semantics
+//! ## Ranged and primitive interaction
 //!
 //! Use `Ranged<MIN, MAX>` type to be sure of the value range:
 //!
 //! ```
 //! # use ranged_integers::*;
 //! fn move_player(dice_roll: Ranged<1, 6>) {
-//!     let x : i32 = dice_roll.into(); // Convert to int
+//!     let x : i32 = dice_roll.into(); // Conversion is allowed, i32 can store 1..=6
 //! }
 //! ```
 //!
-//! ### Create Ranged from primitive at compile time
+//! ### Create Ranged at compile time
 //!
 //! The `Ranged::create_const` can be used to create a [`Ranged`](struct.Ranged.html) value checking it at compile time.
 //! The macro [`r!`](macro.r.html) does the same but a bit shorter.
@@ -92,17 +93,24 @@
 //!
 //! ### Create Ranged from another Ranged
 //!
+//! Use [`expand`](struct.Ranged.html#method.expand) method to broaden the bounds
+//!
 //! ```
 //! # #![feature(const_generics)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
 //! let fixed_roll = r!(4);
 //! move_player(fixed_roll.expand());  // The original bounds 4..=4 are expanded to 1..=6
 //! ```
 //!
-//! Shrinking is forbidden:
+//! Shrinking is forbidden, but the [`try_expand()`](struct.Ranged.html#method.try_expand) performs the runtime check:
 //!
 //! ```compile_fail
 //! # #![feature(const_generics)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
 //! move_player(r!(7).expand());  // Error: the bounds 7..=7 can't fit in 1..=6
+//! ```
+//! ```
+//! # #![feature(const_generics)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
+//! let a: Option<Ranged<1, 6>> = r!(7).try_expand();
+//! assert_eq!(a, None);
 //! ```
 //!
 //! ### Create Ranged from primitive at runtime
@@ -111,12 +119,12 @@
 //!
 //! ```
 //! # #![feature(const_generics)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
-//! let some_i32 = 4;
-//! let some_wrong_i32 = 8;
-//! assert!(Ranged::<0, 6>::new(some_i32).unwrap() == r!(4));
-//! assert!(Ranged::<0, 6>::new(some_wrong_i32) == None);
+//! let some_int = 4;
+//! let some_wrong_int = 8;
+//! assert!(Ranged::<0, 6>::new(some_int).unwrap() == r!(4));
+//! assert!(Ranged::<0, 6>::new(some_wrong_int) == None);
 //!
-//! move_player(Ranged::new(4).unwrap());
+//! move_player(Ranged::new(some_int).unwrap());
 //! ```
 //!
 //! Way 2: use the remainder operation with the "const" divisor
@@ -135,7 +143,7 @@
 //! let y: Ranged<0, 20> = x;  // Error: x is Ranged<-9, 9>, the interval -9..=-1 doesn't fit
 //! ```
 //!
-//! Way 3: Convert the primitive types to `Ranged` with their native bounds
+//! Way 3: Convert the primitive types to `Ranged` with their native bounds using [`AsRanged`](trait.AsRanged.html)
 //!
 //! ```
 //! # #![feature(const_generics)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
@@ -188,35 +196,43 @@
 //!
 //! ## Arithmetics
 //!
-//! Currently addition, subtraction, multiplication, division and negation operations,
-//! min() and max() functions are implemented.
+//! The basic arithmetic operations, min() and max() functions are implemented.
 //! The bounds of values are automatically recalculated:
 //!
 //! ```
 //! # #![feature(const_generics)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
-//! let x = r!([1 6] 4);
-//! let y = r!([1 6] 5);
+//! let x = r!([1 6] 5);
+//! let y = r!([1 6] 4);
 //!
 //! let a = x + y;  // The minimum is (1+1)=2, the maximum is (6+6)=12
-//! let check_add: Ranged<2, 12> = a;  // Assertion assignment
+//! let check_add: Ranged<2, 12> = a;  // Range assertion assignment
+//! assert_eq!(check_add, r!(9));
 //!
 //! let s = x - y;  // The minimum is (1-6)=-5, the maximum is (6-1)=5
-//! let check_sub: Ranged<-5, 5> = s;  // Assertion assignment
+//! let check_sub: Ranged<-5, 5> = s;  // Range assertion assignment
+//! assert_eq!(check_sub, r!(1));
 //!
 //! let m = x * y;  // The minimum is (1*1)=1, the maximum is (6*6)=36
-//! let check_mul: Ranged<1, 36> = m;  // Assertion assignment
+//! let check_mul: Ranged<1, 36> = m;  // Range assertion assignment
+//! assert_eq!(check_mul, r!(20));
 //!
 //! let d = x / y;  // The minimum is (1/6)=0, the maximum is (6/1)=6
-//! let check_div: Ranged<0, 6> = d;  // Assertion assignment
+//! let check_div: Ranged<0, 6> = d;  // Range assertion assignment
+//! assert_eq!(check_div, r!(1));
+//!
+//! let r = x % y;
+//! let check_rem: Ranged<0, 5> = r;  // Range assertion assignment
+//! assert_eq!(check_rem, r!(1));
 //!
 //! let n = -x;
-//! let check_neg: Ranged<-6, -1> = n;  // Assertion assignment
+//! let check_neg: Ranged<-6, -1> = n;  // Range assertion assignment
+//! assert_eq!(check_neg, r!(-5));
 //! 
-//! let min: Ranged<1,6> = x.min(a);  // x.min(a) is never less than 1 and greater than 6
-//! let max: Ranged<2,12> = x.max(a); // x.max(a) is never less than 2 and greater than 12
+//! let min: Ranged<1,6> = x.min(a);  // x.min(a) is never less than 1 nor greater than 6
+//! let max: Ranged<2,12> = x.max(a); // x.max(a) is never less than 2 nor greater than 12
 //! ```
 //!
-//! The division is allowed only if it's impossible to store "0" in the divisor:
+//! The division and remainder are allowed only if it's impossible to store "0" in the divisor:
 //!
 //! ```compile_fail
 //! # #![feature(const_generics)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
@@ -224,16 +240,54 @@
 //! let y = r!([0 6] 5);
 //! let z = r!([-1 6] 5);
 //!
-//! let d = x / y; // Error: division is not possible
-//! let e = x / z; // Error: division is not possible
+//! let d = x / y; // Error: y can be 0
+//! let e = x % z; // Error: z can be 0
 //! ```
 //!
-//! The `Rem` operation is unstable, the better bound calculator is upcoming:
+//! The true bounds calculation routine for `Rem` operation is far too complex.
+//! In this library the calculated bounds will never exceed `1-DMAX..=DMAX-1` where `DMAX` is the 
+//! maximum of the divisor value.
+//!
+//! will be available:
+//! ```
+//! # #![feature(const_generics)] use ranged_integers::*;
+//! let x = r!([-1000 1000] 500);
+//! let y = r!([-1 1000] 500);
+//! let d = r!([1 10] 7);
+//!
+//! let r: Ranged<-9, 9> = (x%d).expand();
+//! // In this case, it expands just from Ranged<-9, 9> to itself
+//!
+//! let r: Ranged<-9, 9> = (y%d).expand();
+//! // In this case, it expands from Ranged<-1, 9>
+//! ```
+//!
+//! But the actual calculation routine can produce smaller bounds:
+//!
 //! ```
 //! # #![feature(const_generics)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
+//! // In the general case the output is Ranged<1-MAX, MAX-1>, MAX from divisor
+//! let x: Ranged<-9, 9> = (r!([-1000 1000] 500) % r!([1 10] 7));
+//! 
+//! // If the dividend is nonnegative or nonpositive,
+//! // the output range is limited to 0.
 //! let x: Ranged<0, 9> = r!([0 100] 15) % r!(10);
-//! let y: Ranged<5, 5> = r!(15) % r!(10);
+//! let x: Ranged<-9, 0> = r!([-100 0] -15) % r!(10);
+//!
+//! // The limit can't exceed the dividend's MIN(if negative) or MAX(if positive):
+//! let x: Ranged<-10, 10> = r!([-10 10] 4) % r!([1 1000] 70);
+//!
+//! // If the divisor is constant, the output bounds are the true bounds:
+//! let x: Ranged<4, 7> = r!([14 17] 15) % r!(10);
+//!
+//! // In particular, if both operands are "constant", the result is "constant"
+//! let x: Ranged<5, 5> = r!(15) % r!(10);
 //! ```
+//!
+//! Following these rules, the calculated bounds may be wider than the true ones, like 
+//! `Ranged<36289, 36292> % Ranged<6, 9> = Ranged<0, 8>` while the
+//! result never exceeds `Ranged<1, 4>`.
+
 
 #![no_std]
 #![allow(incomplete_features)]
@@ -357,8 +411,8 @@ where
 /// let a = r!([0 42] 23);  // Ranged<0, 42> with a value 23
 /// // Type inference:
 /// let b: Ranged<0, 100> = r!([] 42);  // Ranged<0, 100> with a value 42
-/// // "Constant" value
-/// let c = r!(10);  // Ranged<10, 10> with a value 10
+/// // "Constant" value:
+/// let c = r!(10);  // Zero-sized Ranged<10, 10> with a value 10
 /// ```
 #[macro_export]
 macro_rules! r {

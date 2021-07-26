@@ -261,35 +261,69 @@ fn div() {
 
 #[test]
 fn rem() {
-    let a = r!(25) % r!(20);
-    assert_eq!(a, r!(5));
-
-    let a = r!(25) % r!(-20);
-    assert_eq!(a, r!(5));
-
-    let a: Ranged<0, 19> = r!(25) % r!([1 20] 13);
-    assert_eq!(a, r!(12));
-
-    let a: Ranged<-19, 0> = r!(-25) % r!([1 20] 13);
-    assert_eq!(a, r!(-12));
-
+    // Rem operation for primitives
     let a: Ranged<0, 2> = 7_u8 % r!(3);
     assert_eq!(a, r!(1));
-
     let a: Ranged<0, 2> = 7_u8 % r!(-3);
     assert_eq!(a, r!(1));
-
     let a: Ranged<-2, 2> = 7_i8 % r!(3);
     assert_eq!(a, r!(1));
-
     let a: Ranged<-2, 2> = 7_i8 % r!(-3);
     assert_eq!(a, r!(1));
-
     let a: Ranged<-2, 2> = -7_i8 % r!(3);
     assert_eq!(a, r!(-1));
-
     let a: Ranged<-2, 2> = -7_i8 % r!(-3);
     assert_eq!(a, r!(-1));
+
+    // Value checks
+    assert_eq!(r!(25) % r!(20), r!(5));
+    assert_eq!(r!(25) % r!(-20), r!(5));
+    assert_eq!(r!(-25) % r!(20), r!(-5));
+    assert_eq!(r!(-25) % r!(-20), r!(-5));
+
+    // Range checks, Tier 1/5: constant values
+    let _: Ranged<5, 5> = r!(25) % r!(20);
+    let _: Ranged<5, 5> = r!(25) % r!(-20);
+    let _: Ranged<-5, -5> = r!(-25) % r!(20);
+    let _: Ranged<-5, -5> = r!(-25) % r!(-20);
+
+    // Range checks, Tier 2/5: small range by constant value
+    let _: Ranged<3, 6> = r!([23 26] 23) % r!(20);
+    let _: Ranged<3, 6> = r!([23 26] 23) % r!(-20);
+    let _: Ranged<-6, -3> = r!([-26 -23] -23) % r!(20);
+    let _: Ranged<-6, -3> = r!([-26 -23] -23) % r!(-20);
+
+    // Range checks, Tier 2a/5: small range must fail
+    let _: Ranged<0, 19> = r!([19 21] 21) % r!(20);
+    let _: Ranged<0, 19> = r!([19 21] 21) % r!(-20);
+    let _: Ranged<-19, 0> = r!([-21 -19] -21) % r!(20);
+    let _: Ranged<-19, 0> = r!([-21 -19] -21) % r!(-20);
+
+    // Range checks, Tier 3/5: positive dividend
+    // 3a: large dividend, small divisor
+    let _: Ranged<0, 39> = r!([2 400] 21) % r!([1 40] 10);
+    let _: Ranged<0, 39> = r!([2 400] 21) % r!([-40 -1] -10);
+    // 3b: large divisor, small dividend
+    let _: Ranged<0, 20> = r!([2 20] 17) % r!([1 400] 10);
+    let _: Ranged<0, 20> = r!([2 20] 17) % r!([-400 -1] -10);
+
+    // Range checks, Tier 4/5: negative dividend
+    // 4a: large dividend, small divisor
+    let _: Ranged<-39, 0> = r!([-400 -2] -21) % r!([1 40] 10);
+    let _: Ranged<-39, 0> = r!([-400 -2] -21) % r!([-40 -1] -10);
+    // 4b: large divisor, small dividend
+    let _: Ranged<-20, 0> = r!([-20 -2] -17) % r!([1 400] 10);
+    let _: Ranged<-20, 0> = r!([-20 -2] -17) % r!([1 400] 10);
+
+    // Range checks, Tier 5/5: wide dividend
+    let _: Ranged<-39, 39> = r!([-400 400] 17) % r!([1 40] 10);
+    let _: Ranged<-39, 39> = r!([-400 400] 17) % r!([-40 -1] -10);
+    let _: Ranged<-20, 39> = r!([-20 400] 17) % r!([1 40] 10);
+    let _: Ranged<-20, 39> = r!([-20 400] 17) % r!([-40 -1] -10);
+    let _: Ranged<-39, 20> = r!([-400 20] 17) % r!([1 40] 10);
+    let _: Ranged<-39, 20> = r!([-400 20] 17) % r!([-40 -1] -10);
+    let _: Ranged<-20, 20> = r!([-20 20] 17) % r!([1 40] 10);
+    let _: Ranged<-20, 20> = r!([-20 20] 17) % r!([-40 -1] -10);
 }
 
 #[test]
@@ -340,8 +374,8 @@ fn convert() {
     let x: Ranged<0, 18446744073709551615> = 10_u64.as_ranged();
     assert_eq!(r!(10), x);
     let x: Ranged<
-        -170141183460469231731687303715884105728,
-        170141183460469231731687303715884105727,
+        -170_141_183_460_469_231_731_687_303_715_884_105_728,
+        170_141_183_460_469_231_731_687_303_715_884_105_727,
     > = 10_i128.as_ranged();
     assert_eq!(r!(10), x);
 }

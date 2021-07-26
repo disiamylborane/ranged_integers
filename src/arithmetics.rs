@@ -120,25 +120,57 @@ where
 #[must_use]
 #[doc(hidden)]
 pub const fn singleside_rem_min(a_min: irang, a_max: irang, b_min: irang, b_max: irang) -> irang {
-    if a_min == a_max && b_min == b_max {
-        a_min % b_min
-    } else if a_min >= 0 {
-        0
-    } else {
-        1 - max_irang(b_max.abs(), b_min.abs())
+    // Note that b_min..=b_max must never include 0
+    if b_min == b_max {
+        if a_min == a_max {return a_min % b_min}
+        else if a_min > 0 {
+            let base = a_max / b_min.abs() * b_min.abs();
+            if a_min >= base {
+                return a_min % b_min;
+            }
+        }
+        else if a_max < 0 {
+            let base = a_min / b_min.abs() * b_min.abs();
+            if a_max <= base {
+                return a_min % b_min;
+            }
+        }
+    }
+
+    if a_min >= 0 {0} 
+    else {
+        max_irang(1 - max_irang(b_max.abs(), b_min.abs()), a_min)
     }
 }
+
+
 #[must_use]
 #[doc(hidden)]
 pub const fn singleside_rem_max(a_min: irang, a_max: irang, b_min: irang, b_max: irang) -> irang {
-    if a_min == a_max && b_min == b_max {
-        a_min % b_min
-    } else if a_max <= 0 {
-        0
-    } else {
-        max_irang(b_max.abs(), b_min.abs()) - 1
+    if b_min == b_max {
+        if a_min == a_max {return a_min % b_min}
+        else if a_min > 0 {
+            let base = a_max / b_min.abs() * b_min.abs();
+            if a_min >= base {
+                return a_max % b_min;
+            }
+        }
+        else if a_max < 0 {
+            let base = a_min / b_min.abs() * b_min.abs();
+            if a_max <= base {
+                return a_max % b_min;
+            }
+        }
+    }
+
+    if a_max <= 0 {0}
+    else {
+        min_irang(max_irang(b_max.abs(), b_min.abs()) - 1, a_max)
     }
 }
+
+
+
 
 
 impl<const AMIN: irang, const AMAX: irang, const BMIN: irang, const BMAX: irang> const
