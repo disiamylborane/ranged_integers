@@ -36,6 +36,9 @@ impl IntLayout {
     }
 }
 
+// The usage of specialization isn't necessary,
+// but it excludes the need of AlignWrap<...>: Aligner
+// trait bound specification for every generic Ranged
 impl<const N: IntLayout> Aligner for AlignWrap<N> {
     default type A = i128;
 }

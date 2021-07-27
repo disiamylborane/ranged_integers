@@ -37,7 +37,7 @@ macro_rules! int_ranged_converters {
         where [u8; memlayout(MIN, MAX).bytes()]:,
         {
             $(
-                #[doc=concat!("Convert a Ranged into `", stringify!($t), "` value. Accessible if MIN..=MAX fits ", stringify!($t), ".")]
+                #[doc=concat!("Convert a Ranged into `", stringify!($t), "` value. Accessible if fits.")]
                 pub const fn $t(self) -> $t
                 where Assert<{converter_checkers::$t(MIN, MAX)}>: IsAllowed
                 {
@@ -47,7 +47,7 @@ macro_rules! int_ranged_converters {
         }
 
         $(
-            impl<const MIN: irang, const MAX: irang> From<Ranged<MIN, MAX>> for $t
+            impl<const MIN: irang, const MAX: irang> const From<Ranged<MIN, MAX>> for $t
             where
                 [u8; memlayout(MIN, MAX).bytes()]:,
                 Assert<{converter_checkers::$t(MIN, MAX)}>: IsAllowed,
@@ -66,7 +66,7 @@ macro_rules! int_ranged_converters {
     };
 }
 
-int_ranged_converters! {i8 u8 i16 u16 i32 u32 i64 u64 i128}
+int_ranged_converters! {i8 u8 i16 u16 i32 u32 i64 u64 i128 isize usize}
 
 macro_rules! signed_ranged_rem {
     ($($t: ident)+) => {
@@ -86,7 +86,7 @@ macro_rules! signed_ranged_rem {
         )+
     };
 }
-signed_ranged_rem! {i8 i16 i32 i64 i128}
+signed_ranged_rem! {i8 i16 i32 i64 i128 isize}
 
 macro_rules! unsigned_ranged_rem {
     ($($t: ident)+) => {
@@ -105,7 +105,7 @@ macro_rules! unsigned_ranged_rem {
         )+
     };
 }
-unsigned_ranged_rem! {u8 u16 u32 u64}
+unsigned_ranged_rem! {u8 u16 u32 u64 usize}
 
 #[must_use]
 #[doc(hidden)]

@@ -36,7 +36,7 @@
 //! # }
 //! ```
 //!
-//! The implementation heavily relies on the optimizer. The optimizer... usually doesn't fail.
+//! The implementation heavily relies on the optimizer.
 //!
 //! ## Ranged and primitive interaction
 //!
@@ -51,7 +51,8 @@
 //!
 //! ### Create Ranged at compile time
 //!
-//! The `Ranged::create_const` can be used to create a [`Ranged`](struct.Ranged.html) value checking it at compile time.
+//! The [`Ranged::create_const`](struct.Ranged.html#method.create_const) can be used to create a 
+//! [`Ranged`](struct.Ranged.html) value checking it at compile time.
 //! The macro [`r!`](macro.r.html) does the same but a bit shorter.
 //!
 //! ```
@@ -69,78 +70,62 @@
 //! // Way 3: a special case with the single possible value
 //! let x = Ranged::<4, 4>::create_const::<4>();
 //! let y = r!(4);  // Same thing
-//! let a: Ranged<4,4> = x;
-//! let b: Ranged<4,4> = y;
 //! ```
 //!
 //! It fails if the bounds are corrupted:
 //!
 //! ```compile_fail
 //! # #![feature(const_generics)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
-//! move_player(r!([1 6] 7)); // Error: Can't store 7 in [1 6] inverval
+//! move_player(r!([] 7)); // Error: Can't store 7 in [1 6] inverval
 //! ```
 //! ```compile_fail
 //! move_player(r!([1 7] 7)); // Error: type mismatch, move_player() requires Ranged<1, 6>
 //! ```
 //!
-//! A special case with the single possible value:
+//! ### `Ranged` -> `Ranged` conversion
+//!
+//! The `Ranged` can be converted to the type with different bounds using 
+//! [`expand()`](struct.Ranged.html#method.expand) generic method (compile-time check)
+//! and [`try_expand()->Option`](struct.Ranged.html#method.try_expand) (runtime check).
 //!
 //! ```
 //! # #![feature(const_generics)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
-//! let x = r!(4); // Means Ranged<4, 4> with the value 4
-//! let y: Ranged<4,4> = x;
+//! let expandable: Ranged<4, 5> = r!([] 5);  // Fits Ranged<1,6> accepted by move_player
+//! let overlapping: Ranged<4, 9> = r!([] 5);  // Doesn't fit, but the value 5 is acceptable
+//! move_player(expandable.expand());
+//! move_player(overlapping.try_expand().unwrap());
 //! ```
 //!
-//! ### Create Ranged from another Ranged
-//!
-//! Use [`expand`](struct.Ranged.html#method.expand) method to broaden the bounds
-//!
-//! ```
-//! # #![feature(const_generics)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
-//! let fixed_roll = r!(4);
-//! move_player(fixed_roll.expand());  // The original bounds 4..=4 are expanded to 1..=6
-//! ```
-//!
-//! Shrinking is forbidden, but the [`try_expand()`](struct.Ranged.html#method.try_expand) performs the runtime check:
+//! Shrinking with `expand()` is forbidden:
 //!
 //! ```compile_fail
 //! # #![feature(const_generics)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
-//! move_player(r!(7).expand());  // Error: the bounds 7..=7 can't fit in 1..=6
-//! ```
-//! ```
-//! # #![feature(const_generics)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
-//! let a: Option<Ranged<1, 6>> = r!(7).try_expand();
-//! assert_eq!(a, None);
+//! # let overlapping: Ranged<4, 9> = r!([] 5);
+//! move_player(overlapping.expand());  // Error: the bounds 4..=9 can't fit in 1..=6
 //! ```
 //!
-//! ### Create Ranged from primitive at runtime
+//! ### `int` -> `Ranged` conversion
 //!
-//! Way 1: ensure the bounds with `new(i128)->Option<Ranged>` function
+//! Way 1: ensure the bounds with [`Ranged::new(i128) -> Option<Ranged>`](struct.Ranged.html#method.new) function
 //!
 //! ```
 //! # #![feature(const_generics)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
 //! let some_int = 4;
 //! let some_wrong_int = 8;
-//! assert!(Ranged::<0, 6>::new(some_int).unwrap() == r!(4));
+//! assert!(Ranged::<0, 6>::new(some_int) == Some(r!([0 6] 4)));
 //! assert!(Ranged::<0, 6>::new(some_wrong_int) == None);
 //!
 //! move_player(Ranged::new(some_int).unwrap());
 //! ```
 //!
-//! Way 2: use the remainder operation with the "const" divisor
+//! Way 2: use the [`Remainder operation`](struct.Ranged.html#impl-Rem<Ranged<VAL%2C%20VAL>>) with the "const" divisor
 //!
 //! ```
 //! # #![feature(const_generics)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
 //! let x: Ranged<-9, 9> = 15_i32 % r!(10);
 //! let y: Ranged<0, 9> = 15_u32 % r!(10);
-//! assert!(x == r!(5)); // 15 % 10 == 5
-//! assert!(y == r!(5)); // 15 % 10 == 5
-//! ```
-//!
-//! ```compile_fail
-//! # #![feature(const_generics)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
-//! let x = 15 % r!(10);
-//! let y: Ranged<0, 20> = x;  // Error: x is Ranged<-9, 9>, the interval -9..=-1 doesn't fit
+//! assert!(x == r!(5));
+//! assert!(y == r!(5));
 //! ```
 //!
 //! Way 3: Convert the primitive types to `Ranged` with their native bounds using [`AsRanged`](trait.AsRanged.html)
@@ -152,30 +137,33 @@
 //! let y = 15_i16.as_ranged(); // Ranged<-32768, 32767>
 //! ```
 //!
-//! ### Cast Ranged to primitives
+//! ### `Ranged` -> `int` conversion
 //!
-//! Casting to integer types is allowed when the value is proved to
+//! `int::From` trait is implemented when the value is proved to
 //! fit into the result type:
 //!
 //! ```
-//! # #![feature(const_generics)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
+//! # #![feature(const_generics)] use ranged_integers::*;
 //! let x = r!([0 200] 20);
-//! assert_eq!(20_u8, x.into());
+//! let y: u8 = x.into();  // 0..=200 fits u8
 //! ```
 //!
 //! ```compile_fail
-//! # #![feature(const_generics)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
+//! # #![feature(const_generics)] use ranged_integers::*;
 //! let x = r!([0 200] 20);
-//! assert_eq!(20_i8, x.into()); // Error: can't fit the range 128..=200 in i8
+//! let y: i8 = x.into();  // 0..=200 doesn't fit i8
 //! ```
 //!
-//! There is also a set of `const` casting functions:
+//! `From` and `Into` operations can't be used in const context.
+//! The set of [`const fn`s](struct.Ranged.html#method.i8) allows const conversions to 
+//! any integer primitive except for `u128`:
 //!
 //! ```
 //! # #![feature(const_generics)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
 //! let x = r!([0 200] 20);
 //! let y = x.u8(); // y is u8
 //! let z = x.i16(); // z is i16
+//! let w = x.usize(); // z is i16
 //! ```
 //!
 //! ```compile_fail
@@ -228,8 +216,8 @@
 //! let check_neg: Ranged<-6, -1> = n;  // Range assertion assignment
 //! assert_eq!(check_neg, r!(-5));
 //! 
-//! let min: Ranged<1,6> = x.min(a);  // x.min(a) is never less than 1 nor greater than 6
-//! let max: Ranged<2,12> = x.max(a); // x.max(a) is never less than 2 nor greater than 12
+//! let min: Ranged<1,6> = x.min(a);
+//! let max: Ranged<2,12> = x.max(a);
 //! ```
 //!
 //! The division and remainder are allowed only if it's impossible to store "0" in the divisor:
@@ -245,10 +233,10 @@
 //! ```
 //!
 //! The true bounds calculation routine for `Rem` operation is far too complex.
-//! In this library the calculated bounds will never exceed `1-DMAX..=DMAX-1` where `DMAX` is the 
-//! maximum of the divisor value.
+//! In this library the calculated bounds will never exceed `1-DMAXABS..=DMAXABS-1` where `DMAXABS` is the 
+//! maximum of the divisor absolute value.
 //!
-//! will be available:
+//! This kind of `Rem` followed by `expand` is available for any dividend:
 //! ```
 //! # #![feature(const_generics)] use ranged_integers::*;
 //! let x = r!([-1000 1000] 500);
@@ -266,8 +254,9 @@
 //!
 //! ```
 //! # #![feature(const_generics)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
-//! // In the general case the output is Ranged<1-MAX, MAX-1>, MAX from divisor
+//! // In the general case the output is Ranged<1-MAX, MAX-1>, MAX from divisor (by absolute value)
 //! let x: Ranged<-9, 9> = (r!([-1000 1000] 500) % r!([1 10] 7));
+//! let x: Ranged<-9, 9> = (r!([-1000 1000] 500) % r!([-10 -1] -7));
 //! 
 //! // If the dividend is nonnegative or nonpositive,
 //! // the output range is limited to 0.
@@ -277,7 +266,7 @@
 //! // The limit can't exceed the dividend's MIN(if negative) or MAX(if positive):
 //! let x: Ranged<-10, 10> = r!([-10 10] 4) % r!([1 1000] 70);
 //!
-//! // If the divisor is constant, the output bounds are the true bounds:
+//! // If the divisor is "constant", the output bounds are the true bounds:
 //! let x: Ranged<4, 7> = r!([14 17] 15) % r!(10);
 //!
 //! // In particular, if both operands are "constant", the result is "constant"

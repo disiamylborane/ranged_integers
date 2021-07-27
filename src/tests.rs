@@ -158,6 +158,10 @@ fn ranged_macro() {
     assert_eq!(format!("{}", x), "2");
     assert_eq!(format!("{:?}", x), "r!([0 4] 2)");
 
+    let x: Ranged<2, 15> = r!([] 10);
+    assert_eq!(format!("{}", x), "10");
+    assert_eq!(format!("{:?}", x), "r!([2 15] 10)");
+
     let x = r!(10);
     assert_eq!(format!("{}", x), "10");
     assert_eq!(format!("{:?}", x), "r!(10)");
@@ -356,6 +360,8 @@ fn convert() {
     assert_eq!(20, i64::from(r!([0 100] 20)));
     assert_eq!(20, u64::from(r!([0 100] 20)));
     assert_eq!(20, i128::from(r!([0 100] 20)));
+    assert_eq!(20, isize::from(r!([0 100] 20)));
+    assert_eq!(20, usize::from(r!([0 100] 20)));
 
     let x: Ranged<-128, 127> = 10_i8.as_ranged();
     assert_eq!(r!(10), x);
@@ -377,6 +383,10 @@ fn convert() {
         -170_141_183_460_469_231_731_687_303_715_884_105_728,
         170_141_183_460_469_231_731_687_303_715_884_105_727,
     > = 10_i128.as_ranged();
+    assert_eq!(r!(10), x);
+    let x: Ranged<{usize::MIN as i128}, {usize::MAX as i128}> = 10_usize.as_ranged();
+    assert_eq!(r!(10), x);
+    let x: Ranged<{isize::MIN as i128}, {isize::MAX as i128}> = 10_isize.as_ranged();
     assert_eq!(r!(10), x);
 }
 
