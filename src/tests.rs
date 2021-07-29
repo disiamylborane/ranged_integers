@@ -1,5 +1,6 @@
 // Ranged<(-?[0-9]+), (-?[0-9]+)> \{ _val: (-?[0-9]+) \}
 // r![[$1 $2] $3]
+use std::prelude::v1::*;
 
 use super::*;
 use core::ops::Add;
@@ -419,3 +420,18 @@ fn minmax() {
     assert_eq!(min, r!(3));
     assert_eq!(max, r!(15));
 }
+
+#[test]
+fn iter() {
+    use core::fmt::Write;
+
+    let mut s = String::new();
+    for r in range::<{0..10}>() {
+        write!(&mut s, "{} ", r).unwrap();
+    }
+    assert_eq!(s, "0 1 2 3 4 5 6 7 8 9 ");
+
+    assert_eq!(range::<{0..10}>().step_by(2).collect::<Vec<_>>(), vec![r!([0 8] 0), r!([] 2), r!([] 4), r!([] 6), r!([] 8)]);
+    assert_eq!(range::<{0..11}>().step_by(2).collect::<Vec<_>>(), vec![r!([0 10] 0), r!([] 2), r!([] 4), r!([] 6), r!([] 8), r!([] 10)]);
+}
+

@@ -80,7 +80,7 @@ impl Aligner for AlignWrap<{ IntLayout::i128 }> {
 
 // The internal representation of Ranged: an array of bytes with the length and alignmemt ensured
 #[derive(Clone, Copy)]
-pub(crate) struct NumberBytes<const LAYOUT: IntLayout>
+pub struct NumberBytes<const LAYOUT: IntLayout>
 where
     [(); LAYOUT.bytes()]: ,
 {

@@ -1,24 +1,22 @@
 //! # Ranged integers [nightly only]
 //!
-//! The crate provides an integer type restricted to a compile time defined range with
+//! The crate provides [an integer type](struct.Ranged.html) restricted to a compile time defined range with
 //! automatic size selection and automatic bounds calulation for arithmetics.
 //!
-//! [`Ranged<const MIN: i128, const MAX: i128>`](struct.Ranged.html) is bounded to [MIN, MAX] interval **inclusively**.
+//! # Prerequisites
 //!
+//! The library usage requires the following Rust features enabled in the user crate or application:
+//!
+//! ```
+//! // Without this rustc generates errors and sometimes panics.
+//! #![feature(const_generics, const_evaluatable_checked)]
+//! ```
+//! 
 //! # Usage and examples
-//!
-//! ## Prerequisites
-//!
-//! The library usage requires the following Rust feature enabled in the user crate or application:
-//!
-//! ```
-//! // Without this the Ranged arithmetics and conversion functions fail.
-//! #![feature(const_generics)]
-//! ```
-//!
+//! 
 //! ## Integer size
 //!
-//! The [`Ranged`](struct.Ranged.html) automatically chooses the smallest size possible according
+//! The [Ranged] automatically chooses the smallest size possible according
 //! to `MIN..=MAX` range.
 //! It supports i8, u8, i16, u16, i32, u32, i64, u64 and i128 layouts (u128 is not supported),
 //! and a special zero-size layout for "constant" values with `MIN==MAX`.
@@ -51,9 +49,9 @@
 //!
 //! ### Create Ranged at compile time
 //!
-//! The [`Ranged::create_const`](struct.Ranged.html#method.create_const) can be used to create a 
-//! [`Ranged`](struct.Ranged.html) value checking it at compile time.
-//! The macro [`r!`](macro.r.html) does the same but a bit shorter.
+//! The [`Ranged::create_const`] can be used to create a 
+//! [`Ranged`] value checking it at compile time.
+//! The macro [`r!`] does the same but a bit shorter.
 //!
 //! ```
 //! # #![feature(const_generics)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
@@ -128,7 +126,7 @@
 //! assert!(y == r!(5));
 //! ```
 //!
-//! Way 3: Convert the primitive types to `Ranged` with their native bounds using [`AsRanged`](trait.AsRanged.html)
+//! Way 3: Convert the primitive types to `Ranged` with their native bounds using [`AsRanged`]
 //!
 //! ```
 //! # #![feature(const_generics)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
@@ -155,7 +153,7 @@
 //! ```
 //!
 //! `From` and `Into` operations can't be used in const context.
-//! The set of [`const fn`s](struct.Ranged.html#method.i8) allows const conversions to 
+//! A set of [`const fn`](struct.Ranged.html#method.i8)s allows const conversions to 
 //! any integer primitive except for `u128`:
 //!
 //! ```
@@ -163,13 +161,23 @@
 //! let x = r!([0 200] 20);
 //! let y = x.u8(); // y is u8
 //! let z = x.i16(); // z is i16
-//! let w = x.usize(); // z is i16
+//! let w = x.usize(); // w is usize
 //! ```
 //!
 //! ```compile_fail
 //! # #![feature(const_generics)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
 //! let x = r!([0 200] 20);
 //! let err = x.i8();  // Error: 0..=200 doesn't fit i8
+//! ```
+//!
+//! ## Array indexing
+//!
+//! The arrays `[T; N]` may be indexed with `Ranged<0, {N-1}>`:
+//! ```
+//! # #![feature(const_generics)] use ranged_integers::*;
+//! let arr = [10, 11, 12, 13, 14];
+//! let idx = r!([0 4] 2);
+//! assert_eq!(arr[idx], 12);
 //! ```
 //!
 //! ## Comparison
@@ -302,13 +310,7 @@ mod tests;
 pub mod value_check;
 use value_check::{Assert, IsAllowed, OperationPossibility};
 
-pub mod holder;
-use holder::{IntLayout, NumberBytes};
-
-mod conversions;
-mod arithmetics;
-
-pub use conversions::AsRanged;
+mod holder;
 
 #[allow(non_camel_case_types)]
 type irang = i128;
@@ -318,32 +320,28 @@ type irang = i128;
 /// Panics to emit an error when min>max.
 #[must_use]
 #[doc(hidden)]
-pub const fn memlayout(min: irang, max: irang) -> IntLayout {
-    macro_rules! crange {
+pub const fn memlayout(min: irang, max: irang) -> holder::IntLayout {
+    macro_rules! layout_variants {
         ($($t:ident)+) => {
-            $(
-                if core::$t::MIN as irang <= min && max <= core::$t::MAX as irang {return IntLayout::$t}
-            )+
+            $(   if core::$t::MIN as irang <= min && max <= core::$t::MAX as irang {return holder::IntLayout::$t}   )+
         }
     }
-
     if min == max {
-        return IntLayout::Trivial;
+        return holder::IntLayout::Trivial;
     }
     if min > max {
         panic!("Ranged error: MIN cannot be greater than MAX");
     }
-    crange! {i8 u8 i16 u16 i32 u32 i64 u64}
-    IntLayout::i128
+    layout_variants! {i8 u8 i16 u16 i32 u32 i64 u64}
+    holder::IntLayout::i128
 }
 
 /// A value restricted to the given bounds
 #[derive(Clone, Copy)]
 pub struct Ranged<const MIN: irang, const MAX: irang>
-where
-    [u8; memlayout(MIN, MAX).bytes()]: ,
+where [u8; memlayout(MIN, MAX).bytes()]:,
 {
-    v: NumberBytes<{ memlayout(MIN, MAX) }>,
+    v: holder::NumberBytes<{ memlayout(MIN, MAX) }>,
 }
 
 #[must_use]
@@ -358,11 +356,33 @@ where
 {
     const unsafe fn __unsafe_new(n: irang) -> Self {
         Self {
-            v: NumberBytes::from_irang(n),
+            v: holder::NumberBytes::from_irang(n),
         }
     }
 
-    /// Create a Ranged value with a runtime bounds checking
+    /// Convert Ranged to a primitive
+    const fn get(self) -> irang {
+        if MIN == MAX {MIN}
+        else {self.v.to_irang()}
+    }
+
+    /// Create a Ranged value checking the bounds at runtime
+    /// 
+    /// # Example
+    /// 
+    /// ```
+    /// # #![feature(const_generics, const_evaluatable_checked)] use ranged_integers::*; 
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let input = "42".to_string();
+    /// let user_input = input.parse()?;
+    /// if let Some(input) = Ranged::<1, 100>::new(user_input){
+    ///     println!("The value is in range 1..=100")
+    /// }
+    /// else {
+    ///     println!("The value is too high :(")
+    /// }
+    /// # Ok(()) }
+    /// ```
     #[must_use]
     pub const fn new(n: irang) -> Option<Self> {
         if (MIN <= n) && (n <= MAX) {
@@ -372,21 +392,37 @@ where
         }
     }
 
-    /// Create a Ranged value with a compile time bounds checking
+    /// Create a Ranged constant checking the bounds at compile time
+    /// 
+    /// Consider using [`r!`] macro instead
+    /// 
+    /// # Example
+    /// 
+    /// ```
+    /// # #![feature(const_generics, const_evaluatable_checked)] use ranged_integers::*; 
+    /// let a = Ranged::<0, 100>::create_const::<42>();
+    /// let a = r!([0 100] 42);
+    /// ```
     #[must_use]
     pub const fn create_const<const V: irang>() -> Self
-    where
-        Assert<{ OperationPossibility::allow_if(allow_creation(MIN, V, MAX)) }>: IsAllowed,
+    where Assert<{ OperationPossibility::allow_if(allow_creation(MIN, V, MAX)) }>: IsAllowed,
     {
         unsafe { Self::__unsafe_new(V) }
     }
 
-    /// Convert Ranged to a primitive
-    const fn get(self) -> irang {
-        if MIN == MAX {MIN}
-        else {self.v.to_irang()}
+    /// Iterate up from current value to `Self::MAX` (inclusively) using `Self` as output
+    #[must_use]
+    pub const fn iter_up(self) -> iter::Iter<MIN, MAX> {
+        iter::Iter::<MIN,MAX>{current: Some(self)}
     }
 }
+
+mod conversions;
+pub use conversions::AsRanged;
+mod arithmetics;
+mod iter;
+pub use iter::range as range;
+
 
 /// Create a ranged value at compile time
 ///
@@ -445,6 +481,28 @@ pub const fn max_irang(x: irang, y: irang) -> irang {
     if x > y {x} else {y}
 }
 
+#[allow(clippy::cast_sign_loss)]
+impl<T, const N: usize> core::ops::Index<Ranged<0, {N as i128 - 1}>> for [T; N]
+where 
+    [u8; memlayout(0, N as i128 - 1).bytes()]:,
+    Assert<{conversions::converter_checkers::usize(0, N as i128 - 1)}>: IsAllowed
+{
+    type Output = T;
+    fn index(&self, index: Ranged<0, {N as i128 - 1}>) -> &Self::Output {
+        &self[index.usize()]
+    }
+}
+
+#[allow(clippy::cast_sign_loss)]
+impl<T, const N: usize> core::ops::IndexMut<Ranged<0, {N as i128 - 1}>> for [T; N]
+where 
+    [u8; memlayout(0, N as i128 - 1).bytes()]:,
+    Assert<{conversions::converter_checkers::usize(0, N as i128 - 1)}>: IsAllowed
+{
+    fn index_mut(&mut self, index: Ranged<0, {N as i128 - 1}>) -> &mut Self::Output {
+        &mut self[index.usize()]
+    }
+}
 
 
 #[allow(dead_code)]
