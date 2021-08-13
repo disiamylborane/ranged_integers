@@ -294,6 +294,7 @@
 #![feature(const_trait_impl)]
 #![feature(const_raw_ptr_deref)]
 #![feature(specialization)]
+#![feature(inline_const)]
 
 #![deny(missing_docs)]
 #![deny(clippy::nursery)]
@@ -489,7 +490,7 @@ where
 {
     type Output = T;
     fn index(&self, index: Ranged<0, {N as i128 - 1}>) -> &Self::Output {
-        &self[index.usize()]
+        unsafe{self.get_unchecked(index.usize())}
     }
 }
 
@@ -500,7 +501,7 @@ where
     Assert<{conversions::converter_checkers::usize(0, N as i128 - 1)}>: IsAllowed
 {
     fn index_mut(&mut self, index: Ranged<0, {N as i128 - 1}>) -> &mut Self::Output {
-        &mut self[index.usize()]
+        unsafe{self.get_unchecked_mut(index.usize())}
     }
 }
 

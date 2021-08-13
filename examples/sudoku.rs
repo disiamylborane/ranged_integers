@@ -52,13 +52,11 @@ pub fn pretty_print(sudoku_ar: Sudoku) {
     for (i, row) in sudoku_ar.iter().enumerate() {
         for (j, val) in row.iter().enumerate() {
             print!("{} ", val);
-            if j % 3 == 2 && j % 9 != 8 {
+            if j == 2 || j == 5 {
                 print!("| ");
             }
-            if j % 9 == 8 {
-                println!(" ");
-            }
         }
+        println!("");
         if i % 3 == 2 {
             println!("{}", line_sep);
         }

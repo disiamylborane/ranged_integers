@@ -29,12 +29,11 @@ pub const fn rlast(r: core::ops::Range<irang>) -> irang{r.end-1}
 /// }
 /// ```
 #[must_use]
-pub fn range<const RANGE: core::ops::Range<irang>>() -> Iter<{rstart(RANGE)}, {rlast(RANGE)}>
+pub const fn range<const RANGE: core::ops::Range<irang>>() -> Iter<{rstart(RANGE)}, {rlast(RANGE)}>
 where [(); memlayout(rstart(RANGE), rlast(RANGE)).bytes()]:
 {
-    Iter::<{rstart(RANGE)}, {rlast(RANGE)}>{current: unsafe{Ranged::__unsafe_new(RANGE.start).into()}}
+    Iter::<{rstart(RANGE)}, {rlast(RANGE)}>{current: Some(unsafe{Ranged::__unsafe_new(RANGE.start)})}
 }
-
 
 impl<const MIN: irang, const MAX: irang> Iterator for Iter<MIN, MAX>
 where [u8; memlayout(MIN, MAX).bytes()]:,

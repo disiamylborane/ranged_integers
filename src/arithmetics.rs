@@ -228,6 +228,18 @@ impl<const AMIN: irang, const AMAX: irang> core::cmp::Eq for Ranged<AMIN, AMAX>
 where [(); memlayout(AMIN, AMAX).bytes()]: {}
 
 
+#[must_use] #[doc(hidden)]
+pub const fn abs_min(min: irang, max: irang) -> irang {
+    if min.signum() == max.signum() {min_irang(min.abs(), max.abs())}
+    else {0}
+}
+
+#[must_use] #[doc(hidden)]
+pub const fn abs_max(min: irang, max: irang) -> irang {
+    max_irang(min.abs(), max.abs())
+}
+
+
 impl<const MIN: irang, const MAX: irang> Ranged<MIN, MAX>
 where [u8; memlayout(MIN, MAX).bytes()]:
 {
@@ -251,5 +263,10 @@ where [u8; memlayout(MIN, MAX).bytes()]:
         unsafe { Ranged::__unsafe_new(max_irang(self.get(), other.get() )) }
     }
 
-
+    /// Computes the absolute value of `self`
+    pub const fn abs(self) -> Ranged< {abs_min(MIN, MAX)}, {abs_max(MIN, MAX)} >
+    where [u8; memlayout(abs_min(MIN, MAX), abs_max(MIN, MAX)).bytes()]:
+    {
+        unsafe { Ranged::__unsafe_new(self.get().abs()) }
+    }
 }
