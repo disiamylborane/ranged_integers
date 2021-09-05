@@ -2,11 +2,13 @@
 
 [Documentation at docs.rs](https://docs.rs/ranged_integers)
 
+[Sudoku example](https://github.com/disiamylborane/ranged_integers/blob/master/examples/sudoku.rs)
+
 Provides the single generic type `Ranged<MIN, MAX>` representing an integer
 within a specified range. It automatically chooses the data size guided by
 the range specified (so `Ranged<-50, 50>` is of 1 byte while
 `Ranged<-20_000, 100_000>` is of 4 bytes) and supports the arithmetic operations
-with automatic bound recalculation.
+with automatic bound recalculation and range iteration / fixed-size array indexing.
 
 The conversion and arithmetic functions catch the errors such as possible overflow
 and zero division at compile time.

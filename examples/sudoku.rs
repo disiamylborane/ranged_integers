@@ -6,14 +6,14 @@
 
 use ranged_integers::*;
 
-pub const ROW_SIZE : i128 = 9;
+pub const ROW_SIZE : usize = 9;
 
 pub type Val = Ranged<0, 9>;
-pub type RowIndex = Ranged<0, {ROW_SIZE - 1}>;
+pub type RowIndex = Ranged<0, {({ROW_SIZE - 1}) as _}>;
 pub type Sudoku = [[Val; 9]; 9];
 
 pub fn is_valid(val: Val, x: RowIndex, y: RowIndex, sudoku_ar: &Sudoku) -> bool {
-    range::<{0..ROW_SIZE}>().all( |i|
+    range::<{0..ROW_SIZE as _}>().all( |i|
         sudoku_ar[x][i] != val && 
         sudoku_ar[i][y] != val && {
             let r3 = || range::<{0..3}>();

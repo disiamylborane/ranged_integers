@@ -1,7 +1,8 @@
 //! # Ranged integers [nightly only]
 //!
 //! The crate provides [an integer type](struct.Ranged.html) restricted to a compile time defined range with
-//! automatic size selection and automatic bounds calulation for arithmetics.
+//! automatic data size selection, automatic bounds calulation for arithmetics and the possibility
+//! of fixed-size array indexing and range iteration.
 //!
 //! # Prerequisites
 //!
@@ -14,7 +15,30 @@
 //! 
 //! # Usage and examples
 //! 
-//! ## Integer size
+//! ## Ranged semantics
+//! 
+//! Use `Ranged<MIN, MAX>` type to be sure of the value range:
+//!
+//! ```
+//! # use ranged_integers::*;
+//! fn move_player(dice_roll: Ranged<1, 6>) {
+//!     let x : i32 = dice_roll.into(); // Conversion is allowed, i32 can store 1..=6
+//! }
+//! ```
+//!
+//! ## Contents
+//! 
+//! * [Data layout paradigm](#data-layout-paradigm)
+//! * [Ranged and integer primitives](#ranged-and-integer-primitives)
+//!    - [Creation of Ranged at compile time](#creation-of-ranged-at-compile-time)
+//!    - [Ranged -> Ranged conversion](#ranged---ranged-conversion)
+//!    - [int -> Ranged conversion](#int---ranged-conversion)
+//!    - [Ranged -> int conversion](#ranged---int-conversion)
+//! * [Array indexing and iteration](#array-indexing-and-iteration)
+//! * [Comparison](#comparison)
+//! * [Arithmetics](#arithmetics)
+//! 
+//! ## Data layout paradigm
 //!
 //! The [Ranged] automatically chooses the smallest size possible according
 //! to `MIN..=MAX` range.
@@ -36,18 +60,9 @@
 //!
 //! The implementation heavily relies on the optimizer.
 //!
-//! ## Ranged and primitive interaction
+//! ## Ranged and integer primitives
 //!
-//! Use `Ranged<MIN, MAX>` type to be sure of the value range:
-//!
-//! ```
-//! # use ranged_integers::*;
-//! fn move_player(dice_roll: Ranged<1, 6>) {
-//!     let x : i32 = dice_roll.into(); // Conversion is allowed, i32 can store 1..=6
-//! }
-//! ```
-//!
-//! ### Create Ranged at compile time
+//! ### Creation of `Ranged` at compile time
 //!
 //! The [`Ranged::create_const`] can be used to create a 
 //! [`Ranged`] value checking it at compile time.
@@ -119,7 +134,7 @@
 //! Way 2: use the [`Remainder operation`](struct.Ranged.html#impl-Rem<Ranged<VAL%2C%20VAL>>) with the "const" divisor
 //!
 //! ```
-//! # #![feature(adt_const_params)]#![feature(generic_const_exprs)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
+//! # #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
 //! let x: Ranged<-9, 9> = 15_i32 % r!(10);
 //! let y: Ranged<0, 9> = 15_u32 % r!(10);
 //! assert!(x == r!(5));
@@ -170,14 +185,17 @@
 //! let err = x.i8();  // Error: 0..=200 doesn't fit i8
 //! ```
 //!
-//! ## Array indexing
+//! ## Array indexing and iteration
 //!
+//! The [`range<RANGE>`] function creates an iterator through the `RANGE = MIN..END = MIN..=MAX` range
+//! with `Ranged<MIN, MAX>` output type.
 //! The arrays `[T; N]` may be indexed with `Ranged<0, {N-1}>`:
 //! ```
-//! # #![feature(adt_const_params)]#![feature(generic_const_exprs)] use ranged_integers::*;
-//! let arr = [10, 11, 12, 13, 14];
-//! let idx = r!([0 4] 2);
-//! assert_eq!(arr[idx], 12);
+//! # #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
+//! let arr = [r!([1 6] 2), r!([] 3), r!([] 4)];
+//! for i in range::<{0..3}>() {
+//!     move_player(arr[i])
+//! }
 //! ```
 //!
 //! ## Comparison
@@ -192,8 +210,13 @@
 //!
 //! ## Arithmetics
 //!
-//! The basic arithmetic operations, min() and max() functions are implemented.
-//! The bounds of values are automatically recalculated:
+//! The bounds of arithmetic operations results are automatically recalculated.
+//!
+//! Currently supported:
+//! * The basic arithmetic operations (+, -, *, /)
+//! * [`div_euclid()`](struct.Ranged.html#method.div_euclid) and [`rem_euclid()`](struct.Ranged.html#method.rem_euclid)
+//! * [`min()`](struct.Ranged.html#method.min) and [`max()`](struct.Ranged.html#method.max)
+//! * [`abs()`](struct.Ranged.html#method.abs)
 //!
 //! ```
 //! # #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
@@ -226,6 +249,7 @@
 //! 
 //! let min: Ranged<1,6> = x.min(a);
 //! let max: Ranged<2,12> = x.max(a);
+//! let abs: Ranged<0,6> = r!([-1 6] -1).abs();
 //! ```
 //!
 //! The division and remainder are allowed only if it's impossible to store "0" in the divisor:
