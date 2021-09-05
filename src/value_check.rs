@@ -2,8 +2,8 @@
 //!
 //! Usage example. Allow `myfunction` only for positive values of SOME_PARAM:
 //! ```
-//! #![feature(const_evaluatable_checked)]
-//! #![feature(const_generics)]
+//! #![feature(generic_const_exprs)]
+//! #![feature(adt_const_params)]
 //!
 //! # use ranged_integers::value_check::*;
 //!

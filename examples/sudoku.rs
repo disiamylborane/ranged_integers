@@ -2,8 +2,7 @@
 //! rewritten with the use of ranged_integers library
 
 #![allow(incomplete_features)]
-#![feature(const_generics)]
-#![feature(const_evaluatable_checked)]
+#![feature(adt_const_params,generic_const_exprs)]
 
 use ranged_integers::*;
 

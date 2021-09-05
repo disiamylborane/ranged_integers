@@ -1,7 +1,7 @@
 [package]
-edition = "2018"
+edition = "2021"
 name = "ranged_integers"
-version = "0.4.3"
+version = "0.5.0"
 authors = ["disiamylborane"]
 description = "An integer restricted to a compile-time defined bounds driven by const generics"
 readme = "Readme.md"

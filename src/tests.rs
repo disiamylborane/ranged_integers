@@ -243,11 +243,11 @@ fn div() {
     assert_eq!(format!("{}", a), "4");
     assert_eq!(format!("{:?}", a), "r!([0 100] 4)");
 
-    let a = r!([0 100] 20) / r![[-10 - 1] - 5];
+    let a = r!([0 100] 20) / r![[-10 -1] - 5];
     assert_eq!(format!("{}", a), "-4");
     assert_eq!(format!("{:?}", a), "r!([-100 0] -4)");
 
-    let a = r!([-100 0] -20) / r![[-10 - 1] - 5];
+    let a = r!([-100 0] -20).div_euclid(r![[-10 - 1] - 5]);
     assert_eq!(format!("{}", a), "4");
     assert_eq!(format!("{:?}", a), "r!([0 100] 4)");
 
@@ -262,10 +262,40 @@ fn div() {
     let a = r!([100 1000] 500) / r![[-6 - 1] - 5];
     assert_eq!(format!("{}", a), "-100");
     assert_eq!(format!("{:?}", a), "r!([-1000 -16] -100)");
+
+    let _: Ranged<0, 50> = r!([0 101] 17) / r![[2 10] 5];
+    let _: Ranged<0, 50> = r!([0 101] 17).div_euclid(r![[2 10] 5]);
+    let _: Ranged<-50, 0> = r!([-101 0] -17) / r![[2 10] 5];
+    let _: Ranged<-51, 0> = r!([-101 0] -17).div_euclid(r![[2 10] 5]);
+
+    let _: Ranged<-50, 0> = r!([0 101] 17) / r![[-10 -2] -5];
+    let _: Ranged<-50, 0> = r!([0 101] 17).div_euclid(r![[-10 -2] -5]);
+    let _: Ranged<0, 50> = r!([-101 0] -17) / r![[-10 -2] -5];
+    let _: Ranged<0, 51> = r!([-101 0] -17).div_euclid(r![[-10 -2] -5]);
 }
 
 #[test]
 fn rem() {
+    macro_rules! chrem{
+        ($a:literal / $b:literal) => {{
+            assert_eq!(r!($a)/r!($b)*r!($b) + r!($a)%r!($b), r!($a));
+            assert_eq!(r!($a).div_euclid(r!($b))*r!($b) + r!($a).rem_euclid(r!($b)), r!($a));
+        }}
+    }
+
+    chrem!(9 / 5);
+    chrem!(10 / 5);
+    chrem!(11 / 5);
+    chrem!(9 / -5);
+    chrem!(10 / -5);
+    chrem!(11 / -5);
+    chrem!(-9 / 5);
+    chrem!(-10 / 5);
+    chrem!(-11 / 5);
+    chrem!(-9 / -5);
+    chrem!(-10 / -5);
+    chrem!(-11 / -5);
+
     // Rem operation for primitives
     let a: Ranged<0, 2> = 7_u8 % r!(3);
     assert_eq!(a, r!(1));
@@ -285,12 +315,23 @@ fn rem() {
     assert_eq!(r!(25) % r!(-20), r!(5));
     assert_eq!(r!(-25) % r!(20), r!(-5));
     assert_eq!(r!(-25) % r!(-20), r!(-5));
+    assert_eq!(r!(25).rem_euclid(r!(20)), r!(5));
+    assert_eq!(r!(25).rem_euclid(r!(-20)), r!(5));
+    assert_eq!(r!(-25).rem_euclid(r!(20)), r!(15));
+    assert_eq!(r!(-25).rem_euclid(r!(-20)), r!(15));
 
     // Range checks, Tier 1/5: constant values
+    let _: Ranged<0, 0> = r!(25) % r!(25);
     let _: Ranged<5, 5> = r!(25) % r!(20);
     let _: Ranged<5, 5> = r!(25) % r!(-20);
     let _: Ranged<-5, -5> = r!(-25) % r!(20);
     let _: Ranged<-5, -5> = r!(-25) % r!(-20);
+
+    let _: Ranged<0, 0> = r!(25).rem_euclid(r!(25));
+    let _: Ranged<5, 5> = r!(25).rem_euclid(r!(20));
+    let _: Ranged<5, 5> = r!(25).rem_euclid(r!(-20));
+    let _: Ranged<15, 15> = r!(-25).rem_euclid(r!(20));
+    let _: Ranged<15, 15> = r!(-25).rem_euclid(r!(-20));
 
     // Range checks, Tier 2/5: small range by constant value
     let _: Ranged<3, 6> = r!([23 26] 23) % r!(20);
@@ -298,27 +339,45 @@ fn rem() {
     let _: Ranged<-6, -3> = r!([-26 -23] -23) % r!(20);
     let _: Ranged<-6, -3> = r!([-26 -23] -23) % r!(-20);
 
+    let _: Ranged<3, 6> = r!([23 26] 23).rem_euclid(r!(20));
+    let _: Ranged<3, 6> = r!([23 26] 23).rem_euclid(r!(-20));
+    let _: Ranged<14, 17> = r!([-26 -23] -23).rem_euclid(r!(20));
+    let _: Ranged<14, 17> = r!([-26 -23] -23).rem_euclid(r!(-20));
+
     // Range checks, Tier 2a/5: small range must fail
     let _: Ranged<0, 19> = r!([19 21] 21) % r!(20);
     let _: Ranged<0, 19> = r!([19 21] 21) % r!(-20);
     let _: Ranged<-19, 0> = r!([-21 -19] -21) % r!(20);
     let _: Ranged<-19, 0> = r!([-21 -19] -21) % r!(-20);
 
+    let _: Ranged<0, 19> = r!([19 21] 21).rem_euclid(r!(20));
+    let _: Ranged<0, 19> = r!([19 21] 21).rem_euclid(r!(-20));
+    let _: Ranged<0, 19> = r!([-21 -19] -21).rem_euclid(r!(20));
+    let _: Ranged<0, 19> = r!([-21 -19] -21).rem_euclid(r!(-20));
+
     // Range checks, Tier 3/5: positive dividend
     // 3a: large dividend, small divisor
     let _: Ranged<0, 39> = r!([2 400] 21) % r!([1 40] 10);
     let _: Ranged<0, 39> = r!([2 400] 21) % r!([-40 -1] -10);
+    let _: Ranged<0, 39> = r!([2 400] 21).rem_euclid(r!([1 40] 10));
+    let _: Ranged<0, 39> = r!([2 400] 21).rem_euclid(r!([-40 -1] -10));
     // 3b: large divisor, small dividend
     let _: Ranged<0, 20> = r!([2 20] 17) % r!([1 400] 10);
     let _: Ranged<0, 20> = r!([2 20] 17) % r!([-400 -1] -10);
+    let _: Ranged<0, 20> = r!([2 20] 17).rem_euclid(r!([1 400] 10));
+    let _: Ranged<0, 20> = r!([2 20] 17).rem_euclid(r!([-400 -1] -10));
 
     // Range checks, Tier 4/5: negative dividend
     // 4a: large dividend, small divisor
     let _: Ranged<-39, 0> = r!([-400 -2] -21) % r!([1 40] 10);
     let _: Ranged<-39, 0> = r!([-400 -2] -21) % r!([-40 -1] -10);
+    let _: Ranged<0, 39> = r!([-400 -2] -21).rem_euclid(r!([1 40] 10));
+    let _: Ranged<0, 39> = r!([-400 -2] -21).rem_euclid(r!([-40 -1] -10));
     // 4b: large divisor, small dividend
     let _: Ranged<-20, 0> = r!([-20 -2] -17) % r!([1 400] 10);
-    let _: Ranged<-20, 0> = r!([-20 -2] -17) % r!([1 400] 10);
+    let _: Ranged<-20, 0> = r!([-20 -2] -17) % r!([-400 -1] -10);
+    let _: Ranged<0, 399> = r!([-20 -2] -17).rem_euclid(r!([1 400] 10));  // FIXME: Something is possible to be done
+    let _: Ranged<0, 399> = r!([-20 -2] -17).rem_euclid(r!([-400 -1] -10));
 
     // Range checks, Tier 5/5: wide dividend
     let _: Ranged<-39, 39> = r!([-400 400] 17) % r!([1 40] 10);
@@ -329,6 +388,15 @@ fn rem() {
     let _: Ranged<-39, 20> = r!([-400 20] 17) % r!([-40 -1] -10);
     let _: Ranged<-20, 20> = r!([-20 20] 17) % r!([1 40] 10);
     let _: Ranged<-20, 20> = r!([-20 20] 17) % r!([-40 -1] -10);
+
+    let _: Ranged<0, 39> = r!([-400 400] 17).rem_euclid(r!([1 40] 10));
+    let _: Ranged<0, 39> = r!([-400 400] 17).rem_euclid(r!([-40 -1] -10));
+    let _: Ranged<0, 39> = r!([-20 400] 17).rem_euclid(r!([1 40] 10));
+    let _: Ranged<0, 39> = r!([-20 400] 17).rem_euclid(r!([-40 -1] -10));
+    let _: Ranged<0, 39> = r!([-400 20] 17).rem_euclid(r!([1 40] 10));
+    let _: Ranged<0, 39> = r!([-400 20] 17).rem_euclid(r!([-40 -1] -10));
+    let _: Ranged<0, 39> = r!([-20 20] 17).rem_euclid(r!([1 40] 10));
+    let _: Ranged<0, 39> = r!([-20 20] 17).rem_euclid(r!([-40 -1] -10));
 }
 
 #[test]
@@ -420,6 +488,19 @@ fn minmax() {
     assert_eq!(min, r!(3));
     assert_eq!(max, r!(15));
 }
+
+#[test]
+fn abs() {
+    let x: Ranged<0, 100> = r!([-100 100] 15).abs();
+    assert_eq!(x, r!(15));
+    let x: Ranged<0, 100> = r!([-100 100] -15).abs();
+    assert_eq!(x, r!(15));
+    let x: Ranged<50, 100> = r!([50 100] 75).abs();
+    assert_eq!(x, r!(75));
+    let x: Ranged<50, 100> = r!([-100 -50] -75).abs();
+    assert_eq!(x, r!(75));
+}
+
 
 #[test]
 fn iter() {

@@ -9,7 +9,7 @@
 //!
 //! ```
 //! // Without this rustc generates errors and sometimes panics.
-//! #![feature(const_generics, const_evaluatable_checked)]
+//! #![feature(adt_const_params, generic_const_exprs)]
 //! ```
 //! 
 //! # Usage and examples
@@ -54,7 +54,7 @@
 //! The macro [`r!`] does the same but a bit shorter.
 //!
 //! ```
-//! # #![feature(const_generics)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
+//! # #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
 //! // Way 1: specify the bounds explicitly
 //! move_player(Ranged::<1,6>::create_const::<4>());
 //! move_player(r!([1 6] 4));  // Same thing
@@ -73,7 +73,7 @@
 //! It fails if the bounds are corrupted:
 //!
 //! ```compile_fail
-//! # #![feature(const_generics)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
+//! # #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
 //! move_player(r!([] 7)); // Error: Can't store 7 in [1 6] inverval
 //! ```
 //! ```compile_fail
@@ -87,7 +87,7 @@
 //! and [`try_expand()->Option`](struct.Ranged.html#method.try_expand) (runtime check).
 //!
 //! ```
-//! # #![feature(const_generics)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
+//! # #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
 //! let expandable: Ranged<4, 5> = r!([] 5);  // Fits Ranged<1,6> accepted by move_player
 //! let overlapping: Ranged<4, 9> = r!([] 5);  // Doesn't fit, but the value 5 is acceptable
 //! move_player(expandable.expand());
@@ -97,7 +97,7 @@
 //! Shrinking with `expand()` is forbidden:
 //!
 //! ```compile_fail
-//! # #![feature(const_generics)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
+//! # #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
 //! # let overlapping: Ranged<4, 9> = r!([] 5);
 //! move_player(overlapping.expand());  // Error: the bounds 4..=9 can't fit in 1..=6
 //! ```
@@ -107,7 +107,7 @@
 //! Way 1: ensure the bounds with [`Ranged::new(i128) -> Option<Ranged>`](struct.Ranged.html#method.new) function
 //!
 //! ```
-//! # #![feature(const_generics)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
+//! # #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
 //! let some_int = 4;
 //! let some_wrong_int = 8;
 //! assert!(Ranged::<0, 6>::new(some_int) == Some(r!([0 6] 4)));
@@ -119,7 +119,7 @@
 //! Way 2: use the [`Remainder operation`](struct.Ranged.html#impl-Rem<Ranged<VAL%2C%20VAL>>) with the "const" divisor
 //!
 //! ```
-//! # #![feature(const_generics)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
+//! # #![feature(adt_const_params)]#![feature(generic_const_exprs)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
 //! let x: Ranged<-9, 9> = 15_i32 % r!(10);
 //! let y: Ranged<0, 9> = 15_u32 % r!(10);
 //! assert!(x == r!(5));
@@ -129,7 +129,7 @@
 //! Way 3: Convert the primitive types to `Ranged` with their native bounds using [`AsRanged`]
 //!
 //! ```
-//! # #![feature(const_generics)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
+//! # #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
 //! use ranged_integers::AsRanged;
 //! let x = 15_u8.as_ranged();  // Ranged<0, 255>
 //! let y = 15_i16.as_ranged(); // Ranged<-32768, 32767>
@@ -141,13 +141,13 @@
 //! fit into the result type:
 //!
 //! ```
-//! # #![feature(const_generics)] use ranged_integers::*;
+//! # #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
 //! let x = r!([0 200] 20);
 //! let y: u8 = x.into();  // 0..=200 fits u8
 //! ```
 //!
 //! ```compile_fail
-//! # #![feature(const_generics)] use ranged_integers::*;
+//! # #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
 //! let x = r!([0 200] 20);
 //! let y: i8 = x.into();  // 0..=200 doesn't fit i8
 //! ```
@@ -157,7 +157,7 @@
 //! any integer primitive except for `u128`:
 //!
 //! ```
-//! # #![feature(const_generics)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
+//! # #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
 //! let x = r!([0 200] 20);
 //! let y = x.u8(); // y is u8
 //! let z = x.i16(); // z is i16
@@ -165,7 +165,7 @@
 //! ```
 //!
 //! ```compile_fail
-//! # #![feature(const_generics)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
+//! # #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
 //! let x = r!([0 200] 20);
 //! let err = x.i8();  // Error: 0..=200 doesn't fit i8
 //! ```
@@ -174,7 +174,7 @@
 //!
 //! The arrays `[T; N]` may be indexed with `Ranged<0, {N-1}>`:
 //! ```
-//! # #![feature(const_generics)] use ranged_integers::*;
+//! # #![feature(adt_const_params)]#![feature(generic_const_exprs)] use ranged_integers::*;
 //! let arr = [10, 11, 12, 13, 14];
 //! let idx = r!([0 4] 2);
 //! assert_eq!(arr[idx], 12);
@@ -185,7 +185,7 @@
 //! Equality and inequality operations between different Ranged types are allowed:
 //!
 //! ```
-//! # #![feature(const_generics)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
+//! # #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
 //! assert!(r!([1 6] 4) == r!([1 10] 4));
 //! assert!(r!([1 6] 4) != r!([1 6] 5));
 //! ```
@@ -196,7 +196,7 @@
 //! The bounds of values are automatically recalculated:
 //!
 //! ```
-//! # #![feature(const_generics)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
+//! # #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
 //! let x = r!([1 6] 5);
 //! let y = r!([1 6] 4);
 //!
@@ -231,7 +231,7 @@
 //! The division and remainder are allowed only if it's impossible to store "0" in the divisor:
 //!
 //! ```compile_fail
-//! # #![feature(const_generics)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
+//! # #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
 //! let x = r!([1 6] 4);
 //! let y = r!([0 6] 5);
 //! let z = r!([-1 6] 5);
@@ -246,7 +246,7 @@
 //!
 //! This kind of `Rem` followed by `expand` is available for any dividend:
 //! ```
-//! # #![feature(const_generics)] use ranged_integers::*;
+//! # #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
 //! let x = r!([-1000 1000] 500);
 //! let y = r!([-1 1000] 500);
 //! let d = r!([1 10] 7);
@@ -261,7 +261,7 @@
 //! But the actual calculation routine can produce smaller bounds:
 //!
 //! ```
-//! # #![feature(const_generics)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
+//! # #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
 //! // In the general case the output is Ranged<1-MAX, MAX-1>, MAX from divisor (by absolute value)
 //! let x: Ranged<-9, 9> = (r!([-1000 1000] 500) % r!([1 10] 7));
 //! let x: Ranged<-9, 9> = (r!([-1000 1000] 500) % r!([-10 -1] -7));
@@ -288,8 +288,10 @@
 
 #![no_std]
 #![allow(incomplete_features)]
-#![feature(const_generics)]
-#![feature(const_evaluatable_checked)]
+
+#![feature(adt_const_params)]
+#![feature(generic_const_exprs)]
+
 #![feature(const_panic)]
 #![feature(const_trait_impl)]
 #![feature(const_raw_ptr_deref)]
@@ -355,12 +357,14 @@ impl<const MIN: irang, const MAX: irang> Ranged<MIN, MAX>
 where
     [u8; memlayout(MIN, MAX).bytes()]: ,
 {
+    #[allow(clippy::inline_always)] #[must_use] #[inline(always)]
     const unsafe fn __unsafe_new(n: irang) -> Self {
         Self {
             v: holder::NumberBytes::from_irang(n),
         }
     }
 
+    #[allow(clippy::inline_always)] #[must_use] #[inline(always)]
     /// Convert Ranged to a primitive
     const fn get(self) -> irang {
         if MIN == MAX {MIN}
@@ -372,7 +376,7 @@ where
     /// # Example
     /// 
     /// ```
-    /// # #![feature(const_generics, const_evaluatable_checked)] use ranged_integers::*; 
+    /// # #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*; 
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let input = "42".to_string();
     /// let user_input = input.parse()?;
@@ -400,7 +404,7 @@ where
     /// # Example
     /// 
     /// ```
-    /// # #![feature(const_generics, const_evaluatable_checked)] use ranged_integers::*; 
+    /// # #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*; 
     /// let a = Ranged::<0, 100>::create_const::<42>();
     /// let a = r!([0 100] 42);
     /// ```
@@ -427,12 +431,12 @@ pub use iter::range as range;
 
 /// Create a ranged value at compile time
 ///
-/// **Warning**: ensure `#![feature(const_generics)]` is enabled.
+/// **Warning**: ensure `#![feature(adt_const_params)]` is enabled.
 ///
 /// # Example
 ///
 /// ```
-/// # #![feature(const_generics)] use ranged_integers::*;
+/// # #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
 /// // Explicit bounds:
 /// let a = r!([0 42] 23);  // Ranged<0, 42> with a value 23
 /// // Type inference:
@@ -510,84 +514,84 @@ where
 #[doc(hidden)]
 /**
 ```
-# #![feature(const_generics)] #![feature(const_panic)] use ranged_integers::*;
+# #![feature(adt_const_params)] #![feature(const_panic)] use ranged_integers::*;
 u8::from(r!(0));
 ```
 
 ```compile_fail
-# #![feature(const_generics)] #![feature(const_panic)] use ranged_integers::*;
+# #![feature(adt_const_params)] #![feature(const_panic)] use ranged_integers::*;
 u8::from(r!(-1));
 ```
 
 ```
-# #![feature(const_generics)] #![feature(const_panic)] use ranged_integers::*;
+# #![feature(adt_const_params)] #![feature(const_panic)] use ranged_integers::*;
 u8::from(r!(255));
 ```
 
 ```compile_fail
-# #![feature(const_generics)] #![feature(const_panic)] use ranged_integers::*;
+# #![feature(adt_const_params)] #![feature(const_panic)] use ranged_integers::*;
 u8::from(r!(256));
 ```
 
 ```
-# #![feature(const_generics)] #![feature(const_panic)] use ranged_integers::*;
+# #![feature(adt_const_params)] #![feature(const_panic)] use ranged_integers::*;
 i8::from(r!(-128));
 ```
 
 
 ```compile_fail
-# #![feature(const_generics)] #![feature(const_panic)] use ranged_integers::*;
+# #![feature(adt_const_params)] #![feature(const_panic)] use ranged_integers::*;
 i8::from(r!(-129));
 ```
 
 ```
-# #![feature(const_generics)] #![feature(const_panic)] use ranged_integers::*;
+# #![feature(adt_const_params)] #![feature(const_panic)] use ranged_integers::*;
 i8::from(r!(127));
 ```
 
 
 ```compile_fail
-# #![feature(const_generics)] #![feature(const_panic)] use ranged_integers::*;
+# #![feature(adt_const_params)] #![feature(const_panic)] use ranged_integers::*;
 i8::from(r!(128));
 ```
 
 
 ```
-# #![feature(const_panic)] #![feature(const_generics)] #![feature(const_evaluatable_checked)]
+# #![feature(const_panic)] #![feature(adt_const_params)] #![feature(generic_const_exprs)]
 # #[macro_use] extern crate ranged_integers; use ranged_integers::*;
 let a = r![[100 1000] 500] / r![[1 6] 5];
 ```
 ```compile_fail
-# #![feature(const_panic)] #![feature(const_generics)] #![feature(const_evaluatable_checked)]
+# #![feature(const_panic)] #![feature(adt_const_params)] #![feature(generic_const_exprs)]
 # #[macro_use] extern crate ranged_integers; use ranged_integers::*;
 let a = r![[100 1000] 500] / r![[0 6] 5];
 ```
 ```compile_fail
-# #![feature(const_panic)] #![feature(const_generics)] #![feature(const_evaluatable_checked)]
+# #![feature(const_panic)] #![feature(adt_const_params)] #![feature(generic_const_exprs)]
 # #[macro_use] extern crate ranged_integers; use ranged_integers::*;
 let a = r![[100 1000] 500] / r![[-1 6] 5];
 ```
 
 ```
-# #![feature(const_generics)] #![feature(const_panic)] use ranged_integers::*;
+# #![feature(adt_const_params)] #![feature(const_panic)] use ranged_integers::*;
 Ranged::<0,1>::new(1);
 ```
 
 
 ```compile_fail
-# #![feature(const_generics)] #![feature(const_panic)] use ranged_integers::*;
+# #![feature(adt_const_params)] #![feature(const_panic)] use ranged_integers::*;
 Ranged::<1,0>::new(1);
 ```
 
 
 ```
-# #![feature(const_generics)] #![feature(const_panic)] use ranged_integers::*;
+# #![feature(adt_const_params)] #![feature(const_panic)] use ranged_integers::*;
 let x: Ranged::<0,1> = Ranged::<0,1>::new(1).unwrap();
 ```
 
 
 ```
-# #![feature(const_generics)] #![feature(const_panic)] use ranged_integers::*;
+# #![feature(adt_const_params)] #![feature(const_panic)] use ranged_integers::*;
 let x: Ranged::<0,1> = Ranged::new(1).unwrap();
 ```
 */

@@ -240,6 +240,57 @@ pub const fn abs_max(min: irang, max: irang) -> irang {
 }
 
 
+
+#[must_use]
+#[doc(hidden)]
+pub const fn singleside_div_euclid_min(a_min: irang, a_max: irang, b_min: irang, b_max: irang) -> irang {
+    min_4((a_min.div_euclid(b_min), a_min.div_euclid(b_max), a_max.div_euclid(b_min), a_max.div_euclid(b_max)))
+}
+#[must_use]
+#[doc(hidden)]
+pub const fn singleside_div_euclid_max(a_min: irang, a_max: irang, b_min: irang, b_max: irang) -> irang {
+    max_4((a_min.div_euclid(b_min), a_min.div_euclid(b_max), a_max.div_euclid(b_min), a_max.div_euclid(b_max)))
+}
+
+
+#[must_use]
+#[doc(hidden)]
+pub const fn singleside_rem_euclid_min(a_min: irang, a_max: irang, b_min: irang, b_max: irang) -> irang {
+    // Note that b_min..=b_max must never include 0
+    if b_min == b_max {
+        if a_min == a_max {return a_min.rem_euclid(b_min)}
+
+        let base_min = a_min.div_euclid(b_min);
+        let base_max = a_max.div_euclid(b_min);
+        if base_min==base_max {
+            return a_min.rem_euclid(b_min);
+        }
+    }
+
+    0
+}
+
+#[must_use]
+#[doc(hidden)]
+pub const fn singleside_rem_euclid_max(a_min: irang, a_max: irang, b_min: irang, b_max: irang) -> irang {
+    // Note that b_min..=b_max must never include 0
+    if b_min == b_max {
+        if a_min == a_max {return a_min.rem_euclid(b_min)}
+
+        let base_min = a_min.div_euclid(b_min);
+        let base_max = a_max.div_euclid(b_min);
+        if base_min==base_max {
+            return a_max.rem_euclid(b_min);
+        }
+    }
+
+    let absb_max = max_irang(b_min.abs(), b_max.abs());
+
+    if a_min > 0 && a_max < absb_max {a_max}
+    else {absb_max-1}
+}
+
+
 impl<const MIN: irang, const MAX: irang> Ranged<MIN, MAX>
 where [u8; memlayout(MIN, MAX).bytes()]:
 {
@@ -268,5 +319,27 @@ where [u8; memlayout(MIN, MAX).bytes()]:
     where [u8; memlayout(abs_min(MIN, MAX), abs_max(MIN, MAX)).bytes()]:
     {
         unsafe { Ranged::__unsafe_new(self.get().abs()) }
+    }
+
+    /// Calculates the quotient of Euclidean division of self by rhs
+    pub const fn div_euclid<const BMIN: irang, const BMAX: irang>(self, rhs: Ranged<BMIN,BMAX>) 
+        -> Ranged< {singleside_div_euclid_min(MIN, MAX, BMIN, BMAX)}, {singleside_div_euclid_max(MIN, MAX, BMIN, BMAX)} > 
+    where 
+        [u8; memlayout(BMIN, BMAX).bytes()]:,
+        [u8; memlayout(singleside_div_euclid_min(MIN, MAX, BMIN, BMAX), singleside_div_euclid_max(MIN, MAX, BMIN, BMAX)).bytes()]:,
+        Assert<{ allow_division(BMIN, BMAX) }>: IsAllowed,
+    {
+        unsafe { Ranged::__unsafe_new(self.get().div_euclid(rhs.get())) }
+    }
+
+    /// Calculates the Euclidean mod of self by rhs
+    pub const fn rem_euclid<const BMIN: irang, const BMAX: irang>(self, rhs: Ranged<BMIN,BMAX>) 
+        -> Ranged< {singleside_rem_euclid_min(MIN, MAX, BMIN, BMAX)}, {singleside_rem_euclid_max(MIN, MAX, BMIN, BMAX)} > 
+    where
+        [u8; memlayout(BMIN, BMAX).bytes()]:,
+        [u8; memlayout(singleside_rem_euclid_min(MIN, MAX, BMIN, BMAX), singleside_rem_euclid_max(MIN, MAX, BMIN, BMAX)).bytes()]:,
+        Assert<{ allow_division(BMIN, BMAX) }>: IsAllowed,
+    {
+        unsafe { Ranged::__unsafe_new(self.get().rem_euclid(rhs.get())) }
     }
 }

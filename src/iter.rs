@@ -20,7 +20,7 @@ pub const fn rlast(r: core::ops::Range<irang>) -> irang{r.end-1}
 /// # Example
 ///
 /// ```
-/// # #![feature(const_generics, const_evaluatable_checked)] use ranged_integers::*; 
+/// # #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*; 
 /// let mut arr = [0; 10];
 /// arr[0] = 1;
 /// arr[1] = 1;

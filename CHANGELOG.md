@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.0
+
+- **Changed** updated to the new version of Nightly rust.
+- **Added** `abs`, `div_euclid`, `rem_euclid` functions.
+
 ## 0.4.2
 
 - **Added** iterator over ranges, `iter_from` method and `range` function, indexing arrays by `Ranged`.

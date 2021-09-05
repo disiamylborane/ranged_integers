@@ -16,7 +16,7 @@ and zero division at compile time.
 ```rust
 
 #![allow(incomplete_features)]
-#![feature(const_generics, const_evaluatable_checked)]
+#![feature(adt_const_params, generic_const_exprs)]
 
 extern crate ranged_integers;
 use ranged_integers::*;
