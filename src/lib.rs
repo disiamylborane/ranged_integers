@@ -188,24 +188,38 @@
 //! ## Array indexing and iteration
 //!
 //! The [`range<RANGE>`] function creates an iterator through the `RANGE = MIN..END = MIN..=MAX` range
-//! with `Ranged<MIN, MAX>` output type.
-//! The arrays `[T; N]` may be indexed with `Ranged<0, {N-1}>`:
+//! with `Ranged<MIN, MAX>` output type. The [`r!`] macro can be used instead.
+//!
+//! The [`Ranged::iter_up`](struct.Ranged.html#method.iter_up) method creates an
+//! iterator from the current value up to `MAX`.
+//!
+//! The arrays `[T; N]` may be indexed with `Ranged<0, {N-1}>`.
+//!
 //! ```
 //! # #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
-//! let arr = [r!([1 6] 2), r!([] 3), r!([] 4)];
-//! for i in range::<{0..3}>() {
-//!     move_player(arr[i])
+//! let arr = [r!([1 6] 2), r!([] 3), r!([] 4), r!([] 5)];
+//! for i in range::<{0..4}>() {
+//!     move_player(arr[i])  // iters through 0,1,2,3
+//! }
+//! for i in r!(0..4) {
+//!     move_player(arr[i])  // iters through 0,1,2,3
+//! }
+//! for mv in r!([1 6] 3).iter_up() {
+//!     move_player(mv)  // calls with 3,4,5,6
 //! }
 //! ```
 //!
 //! ## Comparison
 //!
-//! Equality and inequality operations between different Ranged types are allowed:
+//! Equality and inequality operations between different Ranged types are allowed,
+//! so as `Ranged` vs integer comparisons:
 //!
 //! ```
 //! # #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
 //! assert!(r!([1 6] 4) == r!([1 10] 4));
 //! assert!(r!([1 6] 4) != r!([1 6] 5));
+//! assert!(r!(4) == 4);
+//! assert!(5 != r!([1 6] 4));
 //! ```
 //!
 //! ## Arithmetics
@@ -453,7 +467,7 @@ mod iter;
 pub use iter::range as range;
 
 
-/// Create a ranged value at compile time
+/// Create a ranged value or a range at compile time
 ///
 /// **Warning**: ensure `#![feature(adt_const_params)]` is enabled.
 ///
@@ -467,6 +481,10 @@ pub use iter::range as range;
 /// let b: Ranged<0, 100> = r!([] 42);  // Ranged<0, 100> with a value 42
 /// // "Constant" value:
 /// let c = r!(10);  // Zero-sized Ranged<10, 10> with a value 10
+/// //Range:
+/// for i in r!(0..10){
+///     let v: Ranged<0,9> = i; 
+/// }
 /// ```
 #[macro_export]
 macro_rules! r {
@@ -475,6 +493,9 @@ macro_rules! r {
     };
     ([] $v:expr) => {
         $crate::Ranged::create_const::<$v>()
+    };
+    ($min:literal..$max:literal) => {
+        $crate::range::< {$min..$max} >()
     };
     ($v:expr) => {
         $crate::Ranged::<$v, $v>::create_const::<$v>()
@@ -532,7 +553,6 @@ where
         unsafe{self.get_unchecked_mut(index.usize())}
     }
 }
-
 
 #[allow(dead_code)]
 #[doc(hidden)]

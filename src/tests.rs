@@ -1,5 +1,6 @@
-// Ranged<(-?[0-9]+), (-?[0-9]+)> \{ _val: (-?[0-9]+) \}
-// r![[$1 $2] $3]
+#![allow(clippy::missing_const_for_fn)]
+#![allow(clippy::cognitive_complexity)]
+
 use std::prelude::v1::*;
 
 use super::*;
@@ -26,12 +27,12 @@ fn sizes() {
     sz_align!((), Ranged<-100, -100>);
     sz_align!((), Ranged<500, 500>);
     sz_align!((), Ranged<-500, -500>);
-    sz_align!((), Ranged<100000, 100000>);
-    sz_align!((), Ranged<-100000, -100000>);
+    sz_align!((), Ranged<100_000, 100_000>);
+    sz_align!((), Ranged<-100_000, -100_000>);
     sz_align!((), Ranged<10_000_000_000, 10_000_000_000>);
     sz_align!((), Ranged<-10_000_000_000, -10_000_000_000>);
-    sz_align!((), Ranged<18446744073709551616, 18446744073709551616>);
-    sz_align!((), Ranged<-18446744073709551616, -18446744073709551616>);
+    sz_align!((), Ranged<18_446_744_073_709_551_616, 18_446_744_073_709_551_616>);
+    sz_align!((), Ranged<-18_446_744_073_709_551_616, -18_446_744_073_709_551_616>);
 
     sz_align!((), Ranged<-32768, -32768>);
     sz_align!((), Ranged<32767, 32767>);
@@ -60,26 +61,26 @@ fn sizes() {
     sz_align!(i32, Ranged<-32768, 32768>);
     sz_align!(i32, Ranged<0, 65536>);
 
-    sz_align!(i32, Ranged<0, 4294967295>);
-    sz_align!(i32, Ranged<-2147483648, 2147483647>);
-    sz_align!(i32, Ranged<100, 10000000>);
-    sz_align!(i32, Ranged<-100, 10000000>);
-    sz_align!(i32, Ranged<100, 2147483647>);
-    sz_align!(i32, Ranged<-100, 2147483647>);
+    sz_align!(i32, Ranged<0, 4_294_967_295>);
+    sz_align!(i32, Ranged<-2_147_483_648, 2_147_483_647>);
+    sz_align!(i32, Ranged<100, 10_000_000>);
+    sz_align!(i32, Ranged<-100, 10_000_000>);
+    sz_align!(i32, Ranged<100, 2147_483_647>);
+    sz_align!(i32, Ranged<-100, 2147_483_647>);
 
-    sz_align!(i64, Ranged<-1, 4294967295>);
-    sz_align!(i64, Ranged<0, 4294967296>);
-    sz_align!(i64, Ranged<-2147483649, 2147483647>);
-    sz_align!(i64, Ranged<-2147483648, 2147483648>);
+    sz_align!(i64, Ranged<-1, 4294_967_295>);
+    sz_align!(i64, Ranged<0, 4294_967_296>);
+    sz_align!(i64, Ranged<-2147_483_649, 2147_483_647>);
+    sz_align!(i64, Ranged<-2147_483_648, 2147_483_648>);
 
-    sz_align!(i64, Ranged<0, 18446744073709551615>);
-    sz_align!(i64, Ranged<-9223372036854775808, 9223372036854775807>);
+    sz_align!(i64, Ranged<0, 18_446_744_073_709_551_615>);
+    sz_align!(i64, Ranged<-9223_372_036_854_775_808, 9223_372_036_854_775_807>);
 
-    sz_align!(i128, Ranged<-1, 18446744073709551615>);
+    sz_align!(i128, Ranged<-1, 18_446_744_073_709_551_615>);
 
-    sz_align!(i128, Ranged<0, 18446744073709551616>);
-    sz_align!(i128, Ranged<-9223372036854775809, 9223372036854775807>);
-    sz_align!(i128, Ranged<-9223372036854775808, 9223372036854775808>);
+    sz_align!(i128, Ranged<0, 18_446_744_073_709_551_616>);
+    sz_align!(i128, Ranged<-9223_372_036_854_775_809, 9223_372_036_854_775_807>);
+    sz_align!(i128, Ranged<-9223_372_036_854_775_808, 9223_372_036_854_775_808>);
 }
 
 #[test]
@@ -131,7 +132,7 @@ fn print_val() {
     assert_eq!(format!("{}", x), "42");
     assert_eq!(format!("{:?}", x), "r!(42)");
 
-    let x = r!(400000);
+    let x = r!(400_000);
     assert_eq!(format!("{}", x), "400000");
 
     let x = r!(4000);
@@ -143,7 +144,7 @@ fn print_val() {
     let x = r!(0);
     assert_eq!(format!("{}", x), "0");
 
-    let x = r!(-400000);
+    let x = r!(-400_000);
     assert_eq!(format!("{}", x), "-400000");
 
     let x = r!(-4000);
@@ -298,27 +299,27 @@ fn rem() {
 
     // Rem operation for primitives
     let a: Ranged<0, 2> = 7_u8 % r!(3);
-    assert_eq!(a, r!(1));
+    assert_eq!(a, 1);
     let a: Ranged<0, 2> = 7_u8 % r!(-3);
-    assert_eq!(a, r!(1));
+    assert_eq!(a, 1);
     let a: Ranged<-2, 2> = 7_i8 % r!(3);
-    assert_eq!(a, r!(1));
+    assert_eq!(a, 1);
     let a: Ranged<-2, 2> = 7_i8 % r!(-3);
-    assert_eq!(a, r!(1));
+    assert_eq!(a, 1);
     let a: Ranged<-2, 2> = -7_i8 % r!(3);
-    assert_eq!(a, r!(-1));
+    assert_eq!(a, -1);
     let a: Ranged<-2, 2> = -7_i8 % r!(-3);
-    assert_eq!(a, r!(-1));
+    assert_eq!(a, -1);
 
     // Value checks
-    assert_eq!(r!(25) % r!(20), r!(5));
-    assert_eq!(r!(25) % r!(-20), r!(5));
-    assert_eq!(r!(-25) % r!(20), r!(-5));
-    assert_eq!(r!(-25) % r!(-20), r!(-5));
-    assert_eq!(r!(25).rem_euclid(r!(20)), r!(5));
-    assert_eq!(r!(25).rem_euclid(r!(-20)), r!(5));
-    assert_eq!(r!(-25).rem_euclid(r!(20)), r!(15));
-    assert_eq!(r!(-25).rem_euclid(r!(-20)), r!(15));
+    assert_eq!(r!(25) % r!(20), 5);
+    assert_eq!(r!(25) % r!(-20), 5);
+    assert_eq!(r!(-25) % r!(20), -5);
+    assert_eq!(r!(-25) % r!(-20), -5);
+    assert_eq!(r!(25).rem_euclid(r!(20)), 5);
+    assert_eq!(r!(25).rem_euclid(r!(-20)), 5);
+    assert_eq!(r!(-25).rem_euclid(r!(20)), 15);
+    assert_eq!(r!(-25).rem_euclid(r!(-20)), 15);
 
     // Range checks, Tier 1/5: constant values
     let _: Ranged<0, 0> = r!(25) % r!(25);
@@ -414,7 +415,7 @@ fn eq() {
 fn eqz() {
     let some_i32 = 4;
     let some_wrong_i32 = 8;
-    assert!(Ranged::<0, 6>::new(some_i32).unwrap() == r!(4));
+    assert!(Ranged::<0, 6>::new(some_i32).unwrap() == 4);
     assert!(Ranged::<0, 6>::new(some_wrong_i32) == None);
 }
 
@@ -440,13 +441,13 @@ fn convert() {
     assert_eq!(r!(10), x);
     let x: Ranged<0, 65535> = 10_u16.as_ranged();
     assert_eq!(r!(10), x);
-    let x: Ranged<-2147483648, 2147483647> = 10_i32.as_ranged();
+    let x: Ranged<-2147_483_648, 2147_483_647> = 10_i32.as_ranged();
     assert_eq!(r!(10), x);
-    let x: Ranged<0, 4294967295> = 10_u32.as_ranged();
+    let x: Ranged<0, 4294_967_295> = 10_u32.as_ranged();
     assert_eq!(r!(10), x);
-    let x: Ranged<-9223372036854775808, 9223372036854775807> = 10_i64.as_ranged();
+    let x: Ranged<-9223_372_036_854_775_808, 9223_372_036_854_775_807> = 10_i64.as_ranged();
     assert_eq!(r!(10), x);
-    let x: Ranged<0, 18446744073709551615> = 10_u64.as_ranged();
+    let x: Ranged<0, 18_446_744_073_709_551_615> = 10_u64.as_ranged();
     assert_eq!(r!(10), x);
     let x: Ranged<
         -170_141_183_460_469_231_731_687_303_715_884_105_728,
@@ -516,3 +517,21 @@ fn iter() {
     assert_eq!(range::<{0..11}>().step_by(2).collect::<Vec<_>>(), vec![r!([0 10] 0), r!([] 2), r!([] 4), r!([] 6), r!([] 8), r!([] 10)]);
 }
 
+
+#[test]
+fn fromstr() {
+    let x = "42".parse::<Ranged<0, 100>>().unwrap();
+    assert_eq!(x, 42);
+
+    let x = "333".parse::<Ranged<0, 100>>().ok();
+    assert_eq!(x, None);
+
+    let x = "-42".parse::<Ranged<-100, 100>>().unwrap();
+    assert_eq!(x, -42);
+
+    let x = "-333".parse::<Ranged<-100, 100>>().ok();
+    assert_eq!(x, None);
+
+    let x = r!(16).to_string();
+    assert_eq!(x, "16");
+}

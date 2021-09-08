@@ -84,10 +84,14 @@ where [u8; memlayout(MIN, MAX).bytes()]:,
     }
 }
 
+#[doc(hidden)]
+pub const fn range_fits_usize(min: irang, max: irang) -> OperationPossibility {
+    OperationPossibility::allow_if((max-min) < (usize::MAX as i128))
+}
 
 impl<const MIN: irang, const MAX: irang> ExactSizeIterator for Iter<MIN, MAX>
 where
     [u8; memlayout(MIN, MAX).bytes()]:,
-    Assert<{OperationPossibility::allow_if(MAX-MIN < usize::MAX as i128)}>: IsAllowed,
+    Assert<{range_fits_usize(MAX, MIN)}>: IsAllowed,
 {}
 

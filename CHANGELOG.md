@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.1
+
+- **Added** `r!` support of `range`.
+- **Added** `FromStr` trait for ranged.
+- **Added** Comparisons `i128` vs `Ranged`.
+- **Fixed** Auto Trait Implementations
+
 ## 0.5.0
 
 - **Changed** updated to the new version of Nightly rust.

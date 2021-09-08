@@ -208,6 +208,39 @@ where
     }
 }
 
+
+#[allow(clippy::use_self)]
+impl<const MIN: irang, const MAX: irang> const
+    core::cmp::PartialEq<Ranged<MIN, MAX>> for irang
+where
+    [(); memlayout(MIN, MAX).bytes()]: ,
+{
+    fn eq(&self, other: &Ranged<MIN, MAX>) -> bool {
+        *self == other.get()
+    }
+
+    #[allow(clippy::partialeq_ne_impl)] // Clippy makes a row, but it's mandatory in const trait impl to implement it
+    fn ne(&self, other: &Ranged<MIN, MAX>) -> bool {
+        !self.eq(other)
+    }
+}
+
+impl<const MIN: irang, const MAX: irang> const
+    core::cmp::PartialEq<irang> for Ranged<MIN, MAX>
+where
+    [(); memlayout(MIN, MAX).bytes()]: ,
+{
+    fn eq(&self, other: &irang) -> bool {
+        self.get() == *other
+    }
+
+    #[allow(clippy::partialeq_ne_impl)] // Clippy makes a row, but it's mandatory in const trait impl to implement it
+    fn ne(&self, other: &irang) -> bool {
+        !self.eq(other)
+    }
+}
+
+
 impl<const AMIN: irang, const AMAX: irang, const BMIN: irang, const BMAX: irang> const
     core::cmp::PartialEq<Ranged<BMIN, BMAX>> for Ranged<AMIN, AMAX>
 where

@@ -1,3 +1,5 @@
+use core::str::FromStr;
+
 use crate::{Assert, IsAllowed, OperationPossibility, Ranged, irang, memlayout, arithmetics::allow_division};
 
 /// Convert an integer value to Ranged according to its own bounds.
@@ -129,5 +131,19 @@ where [u8; memlayout(MIN, MAX).bytes()]:
     pub const fn try_expand<const RMIN: irang, const RMAX: irang>(self) -> Option<Ranged<RMIN, RMAX>>
     where [u8; memlayout(RMIN, RMAX).bytes()]: {
         Ranged::<RMIN, RMAX>::new(self.get())
+    }
+}
+
+#[derive(Debug)]
+pub struct ParseRangedError;
+
+impl<const MIN: irang, const MAX: irang> FromStr for Ranged<MIN,MAX>
+where [(); memlayout(MIN, MAX).bytes()]:
+{
+    type Err = ParseRangedError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let a : irang = s.parse().ok().ok_or(ParseRangedError)?;
+        Self::new(a).ok_or(ParseRangedError)
     }
 }

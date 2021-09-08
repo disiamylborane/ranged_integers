@@ -6,7 +6,7 @@ use super::irang;
 
 // A helper trait specifying the alignment
 pub trait Aligner {
-    type A: Copy;
+    type A: Copy+Send+Sync+Unpin+core::panic::UnwindSafe+core::panic::RefUnwindSafe;
 }
 
 #[derive(PartialEq, Eq, Copy, Clone)]
