@@ -261,6 +261,112 @@ impl<const AMIN: irang, const AMAX: irang> core::cmp::Eq for Ranged<AMIN, AMAX>
 where [(); memlayout(AMIN, AMAX).bytes()]: {}
 
 
+impl<const AMIN: irang, const AMAX: irang, const BMIN: irang, const BMAX: irang> const
+    core::cmp::PartialOrd<Ranged<BMIN, BMAX>> for Ranged<AMIN, AMAX> 
+where
+    [(); memlayout(AMIN, AMAX).bytes()]: ,
+    [(); memlayout(BMIN, BMAX).bytes()]: ,
+{
+    fn partial_cmp(&self, other: &Ranged<BMIN, BMAX>) -> Option<core::cmp::Ordering> {
+        let s = self.get();
+        let o = other.get();
+        #[allow(clippy::comparison_chain)]
+        Some(if s>o {core::cmp::Ordering::Greater}
+        else if s==o {core::cmp::Ordering::Equal}
+        else {core::cmp::Ordering::Less})
+    }
+
+    fn lt(&self, other: &Ranged<BMIN, BMAX>) -> bool {
+        self.get() < other.get()
+    }
+    fn le(&self, other: &Ranged<BMIN, BMAX>) -> bool {
+        self.get() <= other.get()
+    }
+    fn gt(&self, other: &Ranged<BMIN, BMAX>) -> bool {
+        self.get() > other.get()
+    }
+    fn ge(&self, other: &Ranged<BMIN, BMAX>) -> bool {
+        self.get() >= other.get()
+    }
+}
+impl<const AMIN: irang, const AMAX: irang> const core::cmp::Ord for Ranged<AMIN, AMAX>
+where
+    [(); memlayout(AMIN, AMAX).bytes()]: ,
+{
+    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
+        let s = self.get();
+        let o = other.get();
+        #[allow(clippy::comparison_chain)]
+        if s>o {core::cmp::Ordering::Greater}
+        else if s==o {core::cmp::Ordering::Equal}
+        else {core::cmp::Ordering::Less}
+    }
+    fn max(self, other: Self) -> Self where Self: Sized {
+        unsafe { Self::__unsafe_new(max_irang(self.get(), other.get() )) }
+    }
+    fn min(self, other: Self) -> Self where Self: Sized {
+        unsafe { Self::__unsafe_new(min_irang(self.get(), other.get() )) }
+    }
+    fn clamp(self, min: Self, max: Self) -> Self where Self: Sized {
+        <Self as core::cmp::Ord>::min(<Self as core::cmp::Ord>::max(self, min), max)
+    }
+}
+
+impl<const AMIN: irang, const AMAX: irang> const
+    core::cmp::PartialOrd<irang> for Ranged<AMIN, AMAX> 
+where
+    [(); memlayout(AMIN, AMAX).bytes()]: ,
+{
+    fn partial_cmp(&self, other: &irang) -> Option<core::cmp::Ordering> {
+        let s = self.get();
+        #[allow(clippy::comparison_chain)]
+        Some(if s>*other {core::cmp::Ordering::Greater}
+        else if s==*other {core::cmp::Ordering::Equal}
+        else {core::cmp::Ordering::Less})
+    }
+
+    fn lt(&self, other: &irang) -> bool {
+        matches!(self.partial_cmp(other), Some(core::cmp::Ordering::Less))
+    }
+    fn le(&self, other: &irang) -> bool {
+        !matches!(self.partial_cmp(other), None | Some(core::cmp::Ordering::Greater))
+    }
+    fn gt(&self, other: &irang) -> bool {
+        matches!(self.partial_cmp(other), Some(core::cmp::Ordering::Greater))
+    }
+    fn ge(&self, other: &irang) -> bool {
+        matches!(self.partial_cmp(other), Some(core::cmp::Ordering::Greater | core::cmp::Ordering::Equal))
+    }
+}
+
+#[allow(clippy::use_self)]
+impl<const AMIN: irang, const AMAX: irang> const
+    core::cmp::PartialOrd<Ranged<AMIN, AMAX>> for irang
+where
+    [(); memlayout(AMIN, AMAX).bytes()]: ,
+{
+    fn partial_cmp(&self, other: &Ranged<AMIN, AMAX>) -> Option<core::cmp::Ordering> {
+        let o = other.get();
+        #[allow(clippy::comparison_chain)]
+        Some(if *self>o {core::cmp::Ordering::Greater}
+        else if *self==o {core::cmp::Ordering::Equal}
+        else {core::cmp::Ordering::Less})
+    }
+
+    fn lt(&self, other: &Ranged<AMIN, AMAX>) -> bool {
+        matches!(self.partial_cmp(other), Some(core::cmp::Ordering::Less))
+    }
+    fn le(&self, other: &Ranged<AMIN, AMAX>) -> bool {
+        !matches!(self.partial_cmp(other), None | Some(core::cmp::Ordering::Greater))
+    }
+    fn gt(&self, other: &Ranged<AMIN, AMAX>) -> bool {
+        matches!(self.partial_cmp(other), Some(core::cmp::Ordering::Greater))
+    }
+    fn ge(&self, other: &Ranged<AMIN, AMAX>) -> bool {
+        matches!(self.partial_cmp(other), Some(core::cmp::Ordering::Greater | core::cmp::Ordering::Equal))
+    }
+}
+
 #[must_use] #[doc(hidden)]
 pub const fn abs_min(min: irang, max: irang) -> irang {
     if min.signum() == max.signum() {min_irang(min.abs(), max.abs())}

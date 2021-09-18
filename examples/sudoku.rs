@@ -13,11 +13,11 @@ pub type RowIndex = Ranged<0, {({ROW_SIZE - 1}) as _}>;
 pub type Sudoku = [[Val; 9]; 9];
 
 pub fn is_valid(val: Val, x: RowIndex, y: RowIndex, sudoku_ar: &Sudoku) -> bool {
-    range::<{0..ROW_SIZE as _}>().all( |i|
+    r!(0..9).into_iter().all( |i|
         sudoku_ar[x][i] != val && 
         sudoku_ar[i][y] != val && {
-            let r3 = || range::<{0..3}>();
-            r3().all(|i| r3().all(|j| 
+            let r3 = || r!(0..3);
+            r3().into_iter().all(|i| r3().into_iter().all(|j| 
                 sudoku_ar[x / r!(3) * r!(3) + i][y / r!(3) * r!(3) + j] != val
             ))
         }
@@ -31,10 +31,10 @@ pub fn place_number(pos: Ranged<0, 80>, sudoku_ar: &mut Sudoku) -> bool {
                 if sudoku_ar[x][y] == r!(0) {Some((x,y))} else {None}
             })
         .map_or(true, |(x, y)| {
-            for n in range::<{1..10}>() {
+            for n in r!(1..10) {
                 if is_valid(n.expand(), x, y, sudoku_ar) {
                     sudoku_ar[x][y] = n.expand();
-                    let next = if let Some(next) = (pos + r!(1)).try_expand() {next} else {return true};
+                    let next = if let Some(next) = (pos + r!(1)).fit() {next} else {return true};
                     if place_number(next,sudoku_ar) {
                         return true;
                     }

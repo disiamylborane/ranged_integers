@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.0
+
+- **Removed** `range` function.
+- **Changed** `try_expand` into `fit` function (deprecated `try_expand`).
+- **Added** `fit_min` and `fit_max` functions.
+- **Added** comparisons.
+- **Added** `ConstInclusiveRange` zero-size structure with `IntoIterator` instead of `fn range()`.
+- **Added** slicing arrays by `ConstInclusiveRange` with fixed-size array reference output.
+- **Fixed** `r!` revamp and support of ranges (MIN..END and MIN..=MAX)
+
 ## 0.5.1
 
 - **Added** `r!` support of `range`.

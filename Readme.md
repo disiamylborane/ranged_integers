@@ -4,7 +4,9 @@
 
 [Sudoku example](https://github.com/disiamylborane/ranged_integers/blob/master/examples/sudoku.rs)
 
-Provides the single generic type `Ranged<MIN, MAX>` representing an integer
+[Changelog](https://github.com/disiamylborane/ranged_integers/blob/master/CHANGELOG.md)
+
+Provides a generic type `Ranged<MIN, MAX>` representing an integer
 within a specified range. It automatically chooses the data size guided by
 the range specified (so `Ranged<-50, 50>` is of 1 byte while
 `Ranged<-20_000, 100_000>` is of 4 bytes) and supports the arithmetic operations
@@ -16,7 +18,6 @@ and zero division at compile time.
 ## Example
 
 ```rust
-
 #![allow(incomplete_features)]
 #![feature(adt_const_params, generic_const_exprs)]
 

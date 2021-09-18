@@ -34,7 +34,7 @@
 //!    - [Ranged -> Ranged conversion](#ranged---ranged-conversion)
 //!    - [int -> Ranged conversion](#int---ranged-conversion)
 //!    - [Ranged -> int conversion](#ranged---int-conversion)
-//! * [Array indexing and iteration](#array-indexing-and-iteration)
+//! * [Array indexing, slicing and iteration](#array-indexing-slicing-and-iteration)
 //! * [Comparison](#comparison)
 //! * [Arithmetics](#arithmetics)
 //! 
@@ -99,14 +99,15 @@
 //!
 //! The `Ranged` can be converted to the type with different bounds using 
 //! [`expand()`](struct.Ranged.html#method.expand) generic method (compile-time check)
-//! and [`try_expand()->Option`](struct.Ranged.html#method.try_expand) (runtime check).
+//! and the methods [`fit()`](struct.Ranged.html#method.fit), [`fit_min()`](struct.Ranged.html#method.fit_min),
+//! [`fit_max()`](struct.Ranged.html#method.fit_max) for runtime check.
 //!
 //! ```
 //! # #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
 //! let expandable: Ranged<4, 5> = r!([] 5);  // Fits Ranged<1,6> accepted by move_player
 //! let overlapping: Ranged<4, 9> = r!([] 5);  // Doesn't fit, but the value 5 is acceptable
 //! move_player(expandable.expand());
-//! move_player(overlapping.try_expand().unwrap());
+//! move_player(overlapping.fit().unwrap());
 //! ```
 //!
 //! Shrinking with `expand()` is forbidden:
@@ -185,23 +186,33 @@
 //! let err = x.i8();  // Error: 0..=200 doesn't fit i8
 //! ```
 //!
-//! ## Array indexing and iteration
+//! ## Array indexing, slicing and iteration
 //!
-//! The [`range<RANGE>`] function creates an iterator through the `RANGE = MIN..END = MIN..=MAX` range
+//! The [`ConstInclusiveRange<MIN,MAX>`] zero-size type is a range `MIN..=MAX`
+//! capable to create the iterator ([`IntoIterator`] trait implemented)
 //! with `Ranged<MIN, MAX>` output type. The [`r!`] macro can be used instead.
 //!
 //! The [`Ranged::iter_up`](struct.Ranged.html#method.iter_up) method creates an
 //! iterator from the current value up to `MAX`.
 //!
-//! The arrays `[T; N]` may be indexed with `Ranged<0, {N-1}>`.
+//! The arrays `[T; N]` may be indexed with `Ranged<0, {N-1}>` and sliced
+//! with `r!(MIN..END)` range with a reference to fixed-size array output.
 //!
 //! ```
 //! # #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
 //! let arr = [r!([1 6] 2), r!([] 3), r!([] 4), r!([] 5)];
-//! for i in range::<{0..4}>() {
+//!
+//! assert_eq!(arr[r!(1..3)], [3,4]);  // Slicing with array reference output
+//! assert_eq!(arr[r!([0 3] 1)], 3);  // Slicing with array reference output
+//!
+//! // Not recommended to use this:
+//!     for i in ConstInclusiveRange::<0, 3> {
+//!         move_player(arr[i])  // iters through 0,1,2,3
+//!     }
+//! for i in r!(0..4) {
 //!     move_player(arr[i])  // iters through 0,1,2,3
 //! }
-//! for i in r!(0..4) {
+//! for i in r!(0..=3) {
 //!     move_player(arr[i])  // iters through 0,1,2,3
 //! }
 //! for mv in r!([1 6] 3).iter_up() {
@@ -211,7 +222,7 @@
 //!
 //! ## Comparison
 //!
-//! Equality and inequality operations between different Ranged types are allowed,
+//! All `Eq` and `Ord` operations between different Ranged types are allowed,
 //! so as `Ranged` vs integer comparisons:
 //!
 //! ```
@@ -220,6 +231,9 @@
 //! assert!(r!([1 6] 4) != r!([1 6] 5));
 //! assert!(r!(4) == 4);
 //! assert!(5 != r!([1 6] 4));
+//!
+//! assert!(r!(5) > r!([1 6] 4));
+//! assert!(4 < r!([1 6] 5));
 //! ```
 //!
 //! ## Arithmetics
@@ -335,6 +349,7 @@
 #![feature(const_raw_ptr_deref)]
 #![feature(specialization)]
 #![feature(inline_const)]
+#![feature(const_refs_to_cell)]
 
 #![deny(missing_docs)]
 #![deny(clippy::nursery)]
@@ -464,7 +479,7 @@ mod conversions;
 pub use conversions::AsRanged;
 mod arithmetics;
 mod iter;
-pub use iter::range as range;
+pub use iter::ConstRange as ConstInclusiveRange;
 
 
 /// Create a ranged value or a range at compile time
@@ -494,11 +509,29 @@ macro_rules! r {
     ([] $v:expr) => {
         $crate::Ranged::create_const::<$v>()
     };
-    ($min:literal..$max:literal) => {
-        $crate::range::< {$min..$max} >()
+    ($min:tt..$end:tt) => {
+        $crate::ConstInclusiveRange::<{$min}, {$end-1}>
     };
-    ($v:expr) => {
+    (-$min:tt..-$end:tt) => {
+        $crate::ConstInclusiveRange::<{-$min}, {-$end-1}>
+    };
+    (-$min:tt..$end:tt) => {
+        $crate::ConstInclusiveRange::<{-$min}, {$end-1}>
+    };
+    (-$min:tt..=$max:tt) => {
+        $crate::ConstInclusiveRange::<{-$min}, {$max}>
+    };
+    (-$min:tt..=-$max:tt) => {
+        $crate::ConstInclusiveRange::<{-$min}, {-$max}>
+    };
+    ($min:tt..=$max:tt) => {
+        $crate::ConstInclusiveRange::<{$min}, {$max}>
+    };
+    ($v:literal) => {
         $crate::Ranged::<$v, $v>::create_const::<$v>()
+    };
+    ($v:tt) => {
+        $crate::Ranged::<$v, $v>::create_const::<{$v}>()
     };
 }
 
@@ -553,6 +586,39 @@ where
         unsafe{self.get_unchecked_mut(index.usize())}
     }
 }
+
+#[allow(clippy::cast_sign_loss)]
+impl<T, const N: usize, const MIN: irang, const MAX: irang>
+core::ops::Index<iter::ConstRange<MIN, MAX>> for [T; N] 
+where
+    [(); memlayout(MIN, MAX).bytes()]:,
+    [T; (MAX-MIN+1) as usize]:,
+    Assert<{conversions::converter_checkers::usize(MIN, MAX)}>: IsAllowed
+{
+    type Output = [T; (MAX-MIN+1) as usize];
+    fn index(&self, _index: iter::ConstRange<MIN, MAX>) -> &Self::Output {
+        unsafe{
+            let ptr = self.get_unchecked((MIN as usize)..=(MAX as usize)).as_ptr().cast();
+            &*ptr
+        }
+    }
+}
+#[allow(clippy::cast_sign_loss)]
+impl<T, const N: usize, const MIN: irang, const MAX: irang>
+core::ops::IndexMut<iter::ConstRange<MIN, MAX>> for [T; N] 
+where
+    [(); memlayout(MIN, MAX).bytes()]:,
+    [T; (MAX-MIN+1) as usize]:,
+    Assert<{conversions::converter_checkers::usize(MIN, MAX)}>: IsAllowed
+{
+    fn index_mut(&mut self, _index: iter::ConstRange<MIN, MAX>) -> &mut Self::Output {
+        unsafe{
+            let ptr = self.get_unchecked_mut((MIN as usize)..=(MAX as usize)).as_mut_ptr().cast();
+            &mut *ptr
+        }
+    }
+}
+
 
 #[allow(dead_code)]
 #[doc(hidden)]

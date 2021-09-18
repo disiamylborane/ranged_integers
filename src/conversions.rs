@@ -127,6 +127,25 @@ where [u8; memlayout(MIN, MAX).bytes()]:
         unsafe { Ranged::__unsafe_new(self.get()) }
     }
 
+    /// Convert to the other `Ranged`, returning `None` if the value is out of range
+    pub const fn fit<const RMIN: irang, const RMAX: irang>(self) -> Option<Ranged<RMIN, RMAX>>
+    where [u8; memlayout(RMIN, RMAX).bytes()]: {
+        Ranged::<RMIN, RMAX>::new(self.get())
+    }
+
+    /// Change the `MIN` value of Ranged bounds, returning `None` if the value is out of range
+    pub const fn fit_max<const RMAX: irang>(self) -> Option<Ranged<MIN, RMAX>>
+    where [u8; memlayout(MIN, RMAX).bytes()]: {
+        Ranged::<MIN, RMAX>::new(self.get())
+    }
+
+    /// Change the `MAX` value of Ranged bounds, returning `None` if the value is out of range
+    pub const fn fit_min<const RMIN: irang>(self) -> Option<Ranged<RMIN, MAX>>
+    where [u8; memlayout(RMIN, MAX).bytes()]: {
+        Ranged::<RMIN, MAX>::new(self.get())
+    }
+
+    #[deprecated(note = "use method fit() instead")]
     /// Convert to the other Ranged, returning None if the value is out of range
     pub const fn try_expand<const RMIN: irang, const RMAX: irang>(self) -> Option<Ranged<RMIN, RMAX>>
     where [u8; memlayout(RMIN, RMAX).bytes()]: {

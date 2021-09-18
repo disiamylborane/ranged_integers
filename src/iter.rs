@@ -10,29 +10,37 @@ where [u8; memlayout(MIN, MAX).bytes()]:,
     pub(crate) current: Option<Ranged<MIN, MAX>>
 }
 
-
-pub const fn rstart(r: core::ops::Range<irang>) -> irang{r.start}
-pub const fn rlast(r: core::ops::Range<irang>) -> irang{r.end-1}
-
-
-/// Create a range iterator with `Ranged` output
+/// Const range for iterators with `Ranged` output and array indexing
+///
+/// Do not use directly, use [`r!`] macro instead
 ///
 /// # Example
 ///
 /// ```
 /// # #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*; 
-/// let mut arr = [0; 10];
-/// arr[0] = 1;
-/// arr[1] = 1;
-/// for i in range::<{2..9}>() {
-///     arr[i.expand()] = arr[(i-r!(1)).expand()] + arr[(i-r!(2)).expand()];
+/// let mut fibonacci = [0; 10];
+/// fibonacci[0] = 1;
+/// fibonacci[1] = 1;
+/// for i in r!(2..10) {
+///     fibonacci[i.expand()] = fibonacci[(i-r!(1)).expand()] + fibonacci[(i-r!(2)).expand()];
 /// }
+///
+/// let fib234: [_; 3] = fibonacci[r!(2..5)];
+/// assert_eq!(fib234, [2,3,5]);
+///
 /// ```
-#[must_use]
-pub const fn range<const RANGE: core::ops::Range<irang>>() -> Iter<{rstart(RANGE)}, {rlast(RANGE)}>
-where [(); memlayout(rstart(RANGE), rlast(RANGE)).bytes()]:
+#[derive(Clone, Copy)]
+pub struct ConstRange<const MIN: irang, const MAX: irang>
+where [(); memlayout(MIN, MAX).bytes()]: ;
+
+impl<const MIN: irang, const MAX: irang> IntoIterator for ConstRange<MIN, MAX>
+where [(); memlayout(MIN, MAX).bytes()]:
 {
-    Iter::<{rstart(RANGE)}, {rlast(RANGE)}>{current: Some(unsafe{Ranged::__unsafe_new(RANGE.start)})}
+    type Item = Ranged<MIN, MAX>;
+    type IntoIter = Iter<MIN, MAX>;
+    fn into_iter(self) -> Self::IntoIter {
+        Self::IntoIter{current: Some(unsafe{Ranged::__unsafe_new(MIN)})}
+    }
 }
 
 impl<const MIN: irang, const MAX: irang> Iterator for Iter<MIN, MAX>

@@ -409,6 +409,21 @@ fn eq() {
     assert!(10 % a + 15 % b == 15 % a + 10 % b);
     assert!(11 % a + 15 % b != 15 % a + 10 % b);
     assert!(a != b);
+
+    assert!(r!(40) > r!(20));
+    assert!(r!(40) >= r!(20));
+    assert!(r!(10) < r!(20));
+    assert!(r!(10) <= r!(20));
+
+    assert!(r!(40) > 20);
+    assert!(r!(40) >= 20);
+    assert!(r!(10) < 20);
+    assert!(r!(10) <= 20);
+
+    assert!(40 > r!(20));
+    assert!(40 >= r!(20));
+    assert!(10 < r!(20));
+    assert!(10 <= r!(20));
 }
 
 #[test]
@@ -508,13 +523,31 @@ fn iter() {
     use core::fmt::Write;
 
     let mut s = String::new();
-    for r in range::<{0..10}>() {
+    for r in crate::ConstInclusiveRange::<0, 9> {
         write!(&mut s, "{} ", r).unwrap();
     }
     assert_eq!(s, "0 1 2 3 4 5 6 7 8 9 ");
 
-    assert_eq!(range::<{0..10}>().step_by(2).collect::<Vec<_>>(), vec![r!([0 8] 0), r!([] 2), r!([] 4), r!([] 6), r!([] 8)]);
-    assert_eq!(range::<{0..11}>().step_by(2).collect::<Vec<_>>(), vec![r!([0 10] 0), r!([] 2), r!([] 4), r!([] 6), r!([] 8), r!([] 10)]);
+    assert_eq!(r!(0..10).into_iter().step_by(2).collect::<Vec<_>>(), vec![r!([0 8] 0), r!([] 2), r!([] 4), r!([] 6), r!([] 8)]);
+    assert_eq!(r!(0..11).into_iter().step_by(2).collect::<Vec<_>>(), vec![r!([0 10] 0), r!([] 2), r!([] 4), r!([] 6), r!([] 8), r!([] 10)]);
+
+    let mut fibonacci = [0; 10];
+    fibonacci[0] = 1;
+    fibonacci[1] = 1;
+    for i in r!(2..10) {
+        fibonacci[i.expand()] = fibonacci[(i-r!(1)).expand()] + fibonacci[(i-r!(2)).expand()];
+    }
+    assert_eq!(fibonacci, [1,1,2,3,5,8,13,21,34,55]);
+
+    let mut fib234: [_; 3] = fibonacci[r!(2..5)];
+    assert_eq!(fib234, [2,3,5]);
+
+    fib234[r!(1..3)] = [10,15];
+    assert_eq!(fib234, [2,10,15]);
+
+    let rfib = &mut fib234;
+    rfib[r!(0..2)] = [0,5];
+    assert_eq!(fib234, [0,5,15]);
 }
 
 
