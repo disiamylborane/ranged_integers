@@ -5,16 +5,18 @@
 
 use super::irang;
 
+// A trait implemented for any struct that may represent
+// a ranged integer. It may be converted to and from irang.
 #[const_trait]
-pub trait Shrink: Sized {
+pub trait Shrinkable: Sized + Copy + ~const core::marker::Destruct {
     fn shrinkfrom(_: irang) -> Self;
     fn shrinkinto(self) -> irang;
 }
 
-// A helper trait specifying the alignment
+// A type-resolving trait specifying the integer size
 #[const_trait]
-pub trait Aligner {
-    type A: Copy + ~const Shrink + ~const core::marker::Destruct;
+pub trait IntSize {
+    type Primitive: ~const Shrinkable;
 }
 
 macro_rules! wrap_primitive {
@@ -22,18 +24,17 @@ macro_rules! wrap_primitive {
         $(
             #[repr(transparent)]
             #[derive(Clone, Copy)]
-            //#[derive(Clone, Copy)]
             pub struct $name {inner: $repr}
 
-            impl const Shrink for $name {
+            impl const Shrinkable for $name {
                 #[inline(always)]
                 fn shrinkfrom(v: irang) -> Self { Self{inner: v as $repr} }
                 #[inline(always)]
                 fn shrinkinto(self) -> irang { self.inner as irang }
             }
 
-            impl const Aligner for AlignWrap<{ IntLayout::$repr }> {
-                type A = $name;
+            impl const IntSize for IntSizeWrap<{ IntLayout::$repr }> {
+                type Primitive = $name;
             }
         )*
     };
@@ -55,7 +56,7 @@ wrap_primitive!{
 #[derive(PartialEq, Eq, Clone, Copy)]
 #[doc(hidden)]
 pub struct Trivial;
-impl const Shrink for Trivial {
+impl const Shrinkable for Trivial {
     #[inline(always)]
     fn shrinkfrom(_: irang) -> Self { Self }
     #[inline(always)]
@@ -89,22 +90,22 @@ impl IntLayout {
 // Convert the IntLayout into the corresponding type
 #[doc(hidden)]
 #[derive(Copy, Clone)]
-pub struct AlignWrap<const N: IntLayout>;
+pub struct IntSizeWrap<const N: IntLayout>;
 
-impl<const N: IntLayout> const Aligner for AlignWrap<N> {
-    default type A = I128;
+impl<const N: IntLayout> const IntSize for IntSizeWrap<N> {
+    default type Primitive = I128;
 }
 
-impl const Aligner for AlignWrap<{ IntLayout::Trivial }> {
-    type A = Trivial;
+impl const IntSize for IntSizeWrap<{ IntLayout::Trivial }> {
+    type Primitive = Trivial;
 }
 
 
-// The internal representation of Ranged: a 
+// The internal representation of Ranged
 #[derive(Clone, Copy)]
 pub struct NumberBytes<const LAYOUT: IntLayout>
 {
-    bytes: <AlignWrap<LAYOUT> as Aligner>::A,
+    bytes: <IntSizeWrap<LAYOUT> as IntSize>::Primitive,
 }
 
 // Convert NumberBytes to and from integers.
@@ -112,7 +113,7 @@ impl<const LAYOUT: IntLayout> NumberBytes<LAYOUT>
 {
     #[inline(always)]
     pub(crate) const fn from_irang(v: irang) -> Self {
-        Self {bytes: <AlignWrap<LAYOUT> as Aligner>::A::shrinkfrom(v)}
+        Self {bytes: <IntSizeWrap<LAYOUT> as IntSize>::Primitive::shrinkfrom(v)}
     }
 
     #[inline(always)]

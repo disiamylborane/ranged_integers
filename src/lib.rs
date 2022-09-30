@@ -371,6 +371,7 @@ use value_check::{Assert, IsAllowed, OperationPossibility};
 
 mod holder;
 
+// An alias integer representing the largest possible ranged integer
 #[allow(non_camel_case_types)]
 type irang = i128;
 
@@ -626,6 +627,7 @@ where
 /// heavily limitated for now:
 /// - The bounds must be explicitly specified; they are checked, but not inferred
 /// - The macro syntax supports a subset of Rust pattern matching syntax
+/// - `i128::MIN` and `i128::MAX` values must not be in range
 /// - The unclear error reporting
 /// 
 /// ```
@@ -646,7 +648,9 @@ macro_rules! rmatch {
         )*
     ) => {
         {
+            #[deny(const_err)]
             const _MINF: i128 = $min - 1;
+            #[deny(const_err)]
             const _PINF: i128 = $max + 1;
             let _v: Ranged<$min, $max> = $val;
             match _v.i128() {

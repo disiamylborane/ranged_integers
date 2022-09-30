@@ -1,5 +1,7 @@
 # Ranged integers [nightly only]
 
+The nightly-2022-09-30 build.
+
 [Documentation at docs.rs](https://docs.rs/ranged_integers)
 
 [Sudoku example](https://github.com/disiamylborane/ranged_integers/blob/master/examples/sudoku.rs)
