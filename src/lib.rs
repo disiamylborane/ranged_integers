@@ -37,6 +37,7 @@
 //! * [Array indexing, slicing and iteration](#array-indexing-slicing-and-iteration)
 //! * [Comparison](#comparison)
 //! * [Arithmetics](#arithmetics)
+//! * [Pattern matching](#pattern-matching)
 //! 
 //! ## Data layout paradigm
 //!
@@ -336,6 +337,11 @@
 //! Following these rules, the calculated bounds may be wider than the true ones, like 
 //! `Ranged<36289, 36292> % Ranged<6, 9> = Ranged<0, 8>` while the
 //! result never exceeds `Ranged<1, 4>`.
+//!
+//! ## Pattern matching
+//! 
+//! A limited version is implemented with [`rmatch!`] macro.
+//! 
 
 
 #![no_std]
@@ -344,11 +350,8 @@
 #![feature(adt_const_params)]
 #![feature(generic_const_exprs)]
 
-#![feature(const_panic)]
 #![feature(const_trait_impl)]
-#![feature(const_raw_ptr_deref)]
 #![feature(specialization)]
-#![feature(inline_const)]
 #![feature(const_refs_to_cell)]
 
 #![deny(missing_docs)]
@@ -385,9 +388,7 @@ pub const fn memlayout(min: irang, max: irang) -> holder::IntLayout {
     if min == max {
         return holder::IntLayout::Trivial;
     }
-    if min > max {
-        panic!("Ranged error: MIN cannot be greater than MAX");
-    }
+    assert!(min <= max, "Ranged error: MIN cannot be greater than MAX");
     layout_variants! {i8 u8 i16 u16 i32 u32 i64 u64}
     holder::IntLayout::i128
 }
@@ -617,6 +618,44 @@ where
             &mut *ptr
         }
     }
+}
+
+/// Ranged pattern matching macro
+/// 
+/// Allows to match a [`Ranged`] value over a range it covers. The feature is
+/// heavily limitated for now:
+/// - The bounds must be explicitly specified; they are checked, but not inferred
+/// - The macro syntax supports a subset of Rust pattern matching syntax
+/// - The unclear error reporting
+/// 
+/// ```
+/// # #![feature(adt_const_params)] #![feature(const_panic)] use ranged_integers::*;
+/// fn ranged_to_bool(r: Ranged<0,1>) -> bool {
+///     rmatch!{[0 1] r  // Bounds and expression (token tree, 
+///                      // complex expressions must be in parentheses)
+///         0 => {false}
+///         1 => {true}  // Complex patterns like 1..5 | 12..14 are supported
+///     }
+/// }
+/// ```
+#[macro_export]
+macro_rules! rmatch {
+    ([$min:literal $max:literal] $val:tt
+        $( 
+            $p:pat => { $e:expr }
+        )*
+    ) => {
+        {
+            const _MINF: i128 = $min - 1;
+            const _PINF: i128 = $max + 1;
+            let _v: Ranged<$min, $max> = $val;
+            match _v.i128() {
+                i128::MIN..=_MINF => unsafe {core::hint::unreachable_unchecked()}
+                _PINF..=i128::MAX => unsafe {core::hint::unreachable_unchecked()}
+                $( $p => { $e } )*
+            }
+        }
+    };
 }
 
 

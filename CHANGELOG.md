@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.0
+
+- **Changed** updated to the new version of Nightly rust.
+- **Changed** globally revamped the internal structure of Ranged.
+- **Added** `rmatch` macro and pattern matching over Ranged.
+
 ## 0.6.0
 
 - **Removed** `range` function.

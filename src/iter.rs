@@ -12,7 +12,7 @@ where [u8; memlayout(MIN, MAX).bytes()]:,
 
 /// Const range for iterators with `Ranged` output and array indexing
 ///
-/// Do not use directly, use [`r!`] macro instead
+/// Do not use directly, use [`r!`](macro.r.html) macro instead
 ///
 /// # Example
 ///
@@ -59,10 +59,7 @@ where [u8; memlayout(MIN, MAX).bytes()]:,
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         let range = MAX-MIN;
-        if let Ok(rangeus) = usize::try_from(range) {
-            (rangeus, Some(rangeus))
-        }
-        else {(usize::MAX, None)}
+        usize::try_from(range).map_or((usize::MAX, None), |rangeus| (rangeus, Some(rangeus)))
     }
 
     #[inline]

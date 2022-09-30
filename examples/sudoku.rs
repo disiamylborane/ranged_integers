@@ -16,8 +16,7 @@ pub fn is_valid(val: Val, x: RowIndex, y: RowIndex, sudoku_ar: &Sudoku) -> bool 
     r!(0..9).into_iter().all( |i|
         sudoku_ar[x][i] != val && 
         sudoku_ar[i][y] != val && {
-            let r3 = || r!(0..3);
-            r3().into_iter().all(|i| r3().into_iter().all(|j| 
+            r!(0..3).into_iter().all(|i| r!(0..3).into_iter().all(|j| 
                 sudoku_ar[x / r!(3) * r!(3) + i][y / r!(3) * r!(3) + j] != val
             ))
         }
@@ -55,7 +54,7 @@ pub fn pretty_print(sudoku_ar: Sudoku) {
                 print!("| ");
             }
         }
-        println!("");
+        println!();
         if i % 3 == 2 {
             println!("{}", line_sep);
         }

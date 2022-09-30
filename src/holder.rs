@@ -1,17 +1,66 @@
 //! The internals for `Ranged` type
 
 #![doc(hidden)]
+#![allow(clippy::inline_always)]
 
 use super::irang;
 
-// A helper trait specifying the alignment
-pub trait Aligner {
-    type A: Copy+Send+Sync+Unpin+core::panic::UnwindSafe+core::panic::RefUnwindSafe;
+#[const_trait]
+pub trait Shrink: Sized {
+    fn shrinkfrom(_: irang) -> Self;
+    fn shrinkinto(self) -> irang;
 }
 
-#[derive(PartialEq, Eq, Copy, Clone)]
+// A helper trait specifying the alignment
+#[const_trait]
+pub trait Aligner {
+    type A: Copy + ~const Shrink + ~const core::marker::Destruct;
+}
+
+macro_rules! wrap_primitive {
+    ($($name:ident $repr:ident,)*) => {
+        $(
+            #[repr(transparent)]
+            #[derive(Clone, Copy)]
+            //#[derive(Clone, Copy)]
+            pub struct $name {inner: $repr}
+
+            impl const Shrink for $name {
+                #[inline(always)]
+                fn shrinkfrom(v: irang) -> Self { Self{inner: v as $repr} }
+                #[inline(always)]
+                fn shrinkinto(self) -> irang { self.inner as irang }
+            }
+
+            impl const Aligner for AlignWrap<{ IntLayout::$repr }> {
+                type A = $name;
+            }
+        )*
+    };
+}
+
+
+wrap_primitive!{
+    U8 u8,
+    U16 u16,
+    U32 u32,
+    U64 u64,
+    I8 i8,
+    I16 i16,
+    I32 i32,
+    I64 i64,
+    I128 i128,
+}
+
+#[derive(PartialEq, Eq, Clone, Copy)]
 #[doc(hidden)]
 pub struct Trivial;
+impl const Shrink for Trivial {
+    #[inline(always)]
+    fn shrinkfrom(_: irang) -> Self { Self }
+    #[inline(always)]
+    fn shrinkinto(self) -> irang { unreachable!() }
+}
 
 // A helper enum specifying the amount of bytes needed for a Ranged
 #[derive(PartialEq, Eq, Copy, Clone)]
@@ -36,80 +85,39 @@ impl IntLayout {
     }
 }
 
-// The usage of specialization isn't necessary,
-// but it excludes the need of AlignWrap<...>: Aligner
-// trait bound specification for every generic Ranged
-impl<const N: IntLayout> Aligner for AlignWrap<N> {
-    default type A = i128;
-}
-
-macro_rules! alignwrap {
-    (  $($tt:ident)* ) => {
-        $(
-            impl const Aligner for AlignWrap<{ IntLayout::$tt }> {
-                type A = $tt;
-            }
-        )+
-    };
-}
 
 // Convert the IntLayout into the corresponding type
 #[doc(hidden)]
 #[derive(Copy, Clone)]
 pub struct AlignWrap<const N: IntLayout>;
-alignwrap!{Trivial i8 u8 i16 u16 i32 u32 i64 u64 i128 }
 
-// The internal representation of Ranged: an array of bytes with the length and alignmemt ensured
+impl<const N: IntLayout> const Aligner for AlignWrap<N> {
+    default type A = I128;
+}
+
+impl const Aligner for AlignWrap<{ IntLayout::Trivial }> {
+    type A = Trivial;
+}
+
+
+// The internal representation of Ranged: a 
 #[derive(Clone, Copy)]
 pub struct NumberBytes<const LAYOUT: IntLayout>
-where
-    [(); LAYOUT.bytes()]:,
 {
-    // Ensure the alignment
-    _align: [<AlignWrap<LAYOUT> as Aligner>::A; 0],
-    // Bytewise access
-    bytes: [u8; LAYOUT.bytes()],
+    bytes: <AlignWrap<LAYOUT> as Aligner>::A,
 }
 
 // Convert NumberBytes to and from integers.
-// This code heavily relies on optimization
 impl<const LAYOUT: IntLayout> NumberBytes<LAYOUT>
-where
-    [(); LAYOUT.bytes()]: ,
 {
     #[inline(always)]
     pub(crate) const fn from_irang(v: irang) -> Self {
-        macro_rules! conv_from_irang {
-            (  $($tt:ident)* ) => {
-                match const{LAYOUT} {
-                    IntLayout::Trivial => {Self {_align:[], bytes: [0; LAYOUT.bytes()]}}
-                    $(
-                        IntLayout::$tt => {
-                            Self {_align:[], bytes: unsafe{ *((v as $tt).to_ne_bytes().as_ptr() as *const _) }}
-                        }
-                    )+
-                }
-            };
-        }
-
-        conv_from_irang! {i8 u8 i16 u16 i32 u32 i64 u64 i128}
+        Self {bytes: <AlignWrap<LAYOUT> as Aligner>::A::shrinkfrom(v)}
     }
 
     #[inline(always)]
     pub(crate) const fn to_irang(self) -> irang {
-        macro_rules! conv_to_irang {
-            (  $($tt:ident)* ) => {
-                match const{LAYOUT} {
-                    IntLayout::Trivial => {unreachable!()}
-                    $(
-                        IntLayout::$tt => {
-                            $tt::from_ne_bytes(unsafe{*(self.bytes.as_ptr() as *const _)}) as irang
-                        }
-                    )+
-                }
-            };
-        }
-
-        conv_to_irang! { i8 u8 i16 u16 i32 u32 i64 u64 i128 }
+        self.bytes.shrinkinto()
     }
 }
+

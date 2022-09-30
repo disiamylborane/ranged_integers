@@ -65,22 +65,22 @@ fn sizes() {
     sz_align!(i32, Ranged<-2_147_483_648, 2_147_483_647>);
     sz_align!(i32, Ranged<100, 10_000_000>);
     sz_align!(i32, Ranged<-100, 10_000_000>);
-    sz_align!(i32, Ranged<100, 2147_483_647>);
-    sz_align!(i32, Ranged<-100, 2147_483_647>);
+    sz_align!(i32, Ranged<100, 2_147_483_647>);
+    sz_align!(i32, Ranged<-100, 2_147_483_647>);
 
-    sz_align!(i64, Ranged<-1, 4294_967_295>);
-    sz_align!(i64, Ranged<0, 4294_967_296>);
-    sz_align!(i64, Ranged<-2147_483_649, 2147_483_647>);
-    sz_align!(i64, Ranged<-2147_483_648, 2147_483_648>);
+    sz_align!(i64, Ranged<-1, 4_294_967_295>);
+    sz_align!(i64, Ranged<0, 4_294_967_296>);
+    sz_align!(i64, Ranged<-2_147_483_649, 2_147_483_647>);
+    sz_align!(i64, Ranged<-2_147_483_648, 2_147_483_648>);
 
     sz_align!(i64, Ranged<0, 18_446_744_073_709_551_615>);
-    sz_align!(i64, Ranged<-9223_372_036_854_775_808, 9223_372_036_854_775_807>);
+    sz_align!(i64, Ranged<-9_223_372_036_854_775_808, 9_223_372_036_854_775_807>);
 
     sz_align!(i128, Ranged<-1, 18_446_744_073_709_551_615>);
 
     sz_align!(i128, Ranged<0, 18_446_744_073_709_551_616>);
-    sz_align!(i128, Ranged<-9223_372_036_854_775_809, 9223_372_036_854_775_807>);
-    sz_align!(i128, Ranged<-9223_372_036_854_775_808, 9223_372_036_854_775_808>);
+    sz_align!(i128, Ranged<-9_223_372_036_854_775_809, 9_223_372_036_854_775_807>);
+    sz_align!(i128, Ranged<-9_223_372_036_854_775_808, 9_223_372_036_854_775_808>);
 }
 
 #[test]
@@ -430,8 +430,8 @@ fn eq() {
 fn eqz() {
     let some_i32 = 4;
     let some_wrong_i32 = 8;
-    assert!(Ranged::<0, 6>::new(some_i32).unwrap() == 4);
-    assert!(Ranged::<0, 6>::new(some_wrong_i32) == None);
+    assert!(Ranged::<0, 6>::new(some_i32) == Some(r!([] 4)));
+    assert!(Ranged::<0, 6>::new(some_wrong_i32).is_none());
 }
 
 #[test]
@@ -456,11 +456,11 @@ fn convert() {
     assert_eq!(r!(10), x);
     let x: Ranged<0, 65535> = 10_u16.as_ranged();
     assert_eq!(r!(10), x);
-    let x: Ranged<-2147_483_648, 2147_483_647> = 10_i32.as_ranged();
+    let x: Ranged<-2_147_483_648, 2_147_483_647> = 10_i32.as_ranged();
     assert_eq!(r!(10), x);
-    let x: Ranged<0, 4294_967_295> = 10_u32.as_ranged();
+    let x: Ranged<0, 4_294_967_295> = 10_u32.as_ranged();
     assert_eq!(r!(10), x);
-    let x: Ranged<-9223_372_036_854_775_808, 9223_372_036_854_775_807> = 10_i64.as_ranged();
+    let x: Ranged<-9_223_372_036_854_775_808, 9_223_372_036_854_775_807> = 10_i64.as_ranged();
     assert_eq!(r!(10), x);
     let x: Ranged<0, 18_446_744_073_709_551_615> = 10_u64.as_ranged();
     assert_eq!(r!(10), x);
@@ -567,4 +567,20 @@ fn fromstr() {
 
     let x = r!(16).to_string();
     assert_eq!(x, "16");
+}
+
+
+const fn rmatch_example(val: Ranged<1, 20>) -> &'static str {
+    rmatch!{[1 20] val
+        1..=9 => {"Fail"}
+        10..=19 | 20 => {"Success"}
+    }
+}
+
+#[test]
+fn test_rmatch() {
+    assert_eq!(rmatch_example(r!([] 5)), "Fail");
+    assert_eq!(rmatch_example(r!([] 10)), "Success");
+    assert_eq!(rmatch_example(r!([] 15)), "Success");
+    assert_eq!(rmatch_example(r!([] 20)), "Success");
 }
