@@ -572,8 +572,23 @@ fn fromstr() {
 
 const fn rmatch_example(val: Ranged<1, 20>) -> &'static str {
     rmatch!{[1 20] val
-        1..=9 => {"Fail"}
-        10..=19 | 20 => {"Success"}
+        1..=5 | 16..=20 => {"Fail"}
+        6..=15 => {"Success"}
+    }
+}
+
+const fn rmatch_digit(val: Ranged<0, 9>) -> &'static str {
+    rmatch!{[0 9] val
+        0 => {"Zero"}
+        1 => {"One"}
+        2 => {"Two"}
+        3 => {"Three"}
+        4 => {"Four"}
+        5 => {"Five"}
+        6 => {"Six"}
+        7 => {"Seven"}
+        8 => {"Eight"}
+        9 => {"Nine"}
     }
 }
 
@@ -582,5 +597,8 @@ fn test_rmatch() {
     assert_eq!(rmatch_example(r!([] 5)), "Fail");
     assert_eq!(rmatch_example(r!([] 10)), "Success");
     assert_eq!(rmatch_example(r!([] 15)), "Success");
-    assert_eq!(rmatch_example(r!([] 20)), "Success");
+    assert_eq!(rmatch_example(r!([] 20)), "Fail");
+
+    let all_digits = r!(0..=9).into_iter().map(rmatch_digit).collect::<Vec<_>>().join(" ");
+    assert_eq!(all_digits, "Zero One Two Three Four Five Six Seven Eight Nine");
 }

@@ -623,8 +623,8 @@ where
 
 /// Ranged pattern matching macro
 /// 
-/// Allows to match a [`Ranged`] value over a range it covers. The feature is
-/// heavily limitated for now:
+/// Allows to match a [`Ranged`] value over a range it covers. The feature has
+/// the following limitations:
 /// - The bounds must be explicitly specified; they are checked, but not inferred
 /// - The macro syntax supports a subset of Rust pattern matching syntax
 /// - `i128::MIN` and `i128::MAX` values must not be in range
@@ -746,6 +746,31 @@ let x: Ranged::<0,1> = Ranged::<0,1>::new(1).unwrap();
 ```
 # #![feature(adt_const_params)] #![feature(const_panic)] use ranged_integers::*;
 let x: Ranged::<0,1> = Ranged::new(1).unwrap();
+```
+
+
+```
+# #![feature(adt_const_params)] #![feature(const_panic)] use ranged_integers::*;
+let a = r!([-10 10] 0);
+rmatch!{[-10 10] a
+    _ => {()}
+}
+```
+
+```compile_fail
+# #![feature(adt_const_params)] #![feature(const_panic)] use ranged_integers::*;
+let a = r!([-170141183460469231731687303715884105728 10] 0);
+rmatch!{[-170141183460469231731687303715884105728 10] a
+    _ => {()}
+}
+```
+
+```compile_fail
+# #![feature(adt_const_params)] #![feature(const_panic)] use ranged_integers::*;
+let a = r!([-10 170141183460469231731687303715884105727] 0);
+rmatch!{[-10 170141183460469231731687303715884105727] a
+    _ => {()}
+}
 ```
 */
 struct Failtests;
