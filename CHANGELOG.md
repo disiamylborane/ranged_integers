@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.1
+
+- **Changed** const-ify array indexing traits.
+- **Added** type constraining comparisons `fit_less_than`, `fit_less_eq`, `fit_greater_than`, `fit_greater_eq`.
+- (**Changed** the naming of internals).
+
 ## 0.7.0
 
 - **Changed** updated to the new version of Nightly rust.

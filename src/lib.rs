@@ -101,7 +101,12 @@
 //! The `Ranged` can be converted to the type with different bounds using 
 //! [`expand()`](struct.Ranged.html#method.expand) generic method (compile-time check)
 //! and the methods [`fit()`](struct.Ranged.html#method.fit), [`fit_min()`](struct.Ranged.html#method.fit_min),
-//! [`fit_max()`](struct.Ranged.html#method.fit_max) for runtime check.
+//! [`fit_max()`](struct.Ranged.html#method.fit_max) for runtime check. The `Ranged` values may be compared
+//! to each other yielding the shrinked bounds using 
+//! [`fit_less_than()`](struct.Ranged.html#method.fit_less_than),
+//! [`fit_less_eq()`](struct.Ranged.html#method.fit_less_eq),
+//! [`fit_greater_than()`](struct.Ranged.html#method.fit_greater_than), and 
+//! [`fit_greater_eq()`](struct.Ranged.html#method.fit_greater_eq) methods.
 //!
 //! ```
 //! # #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
@@ -236,6 +241,9 @@
 //! assert!(r!(5) > r!([1 6] 4));
 //! assert!(4 < r!([1 6] 5));
 //! ```
+//! 
+//! To constrain the output type ruled by comparison, one may use [`Ranged::fit_less_than`]
+//! function and its siblings [`Ranged::fit_less_eq`], [`Ranged::fit_greater_than`], and [`Ranged::fit_greater_eq`].
 //!
 //! ## Arithmetics
 //!
@@ -358,6 +366,9 @@
 #![deny(clippy::nursery)]
 #![warn(clippy::pedantic)]
 
+#![feature(const_slice_index)]
+#![feature(const_mut_refs)]
+
 #[cfg(test)]
 #[macro_use]
 extern crate std;
@@ -395,11 +406,12 @@ pub const fn memlayout(min: irang, max: irang) -> holder::IntLayout {
 }
 
 /// A value restricted to the given bounds
+#[repr(transparent)]
 #[derive(Clone, Copy)]
 pub struct Ranged<const MIN: irang, const MAX: irang>
 where [u8; memlayout(MIN, MAX).bytes()]:,
 {
-    v: holder::NumberBytes<{ memlayout(MIN, MAX) }>,
+    v: holder::RangedRepr<{ memlayout(MIN, MAX) }>,
 }
 
 #[must_use]
@@ -415,7 +427,7 @@ where
     #[allow(clippy::inline_always)] #[must_use] #[inline(always)]
     const unsafe fn __unsafe_new(n: irang) -> Self {
         Self {
-            v: holder::NumberBytes::from_irang(n),
+            v: holder::RangedRepr::from_irang(n),
         }
     }
 
@@ -550,9 +562,9 @@ where [(); memlayout(MIN, MAX).bytes()]: ,
 {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         if MIN == MAX {
-            write!(f, "r!({})", MIN)
+            write!(f, "r!({MIN})")
         } else {
-            write!(f, "r!([{} {}] {})", MIN, MAX, self.get())
+            write!(f, "r!([{MIN} {MAX}] {})", self.get())
         }
     }
 }
@@ -567,7 +579,7 @@ pub const fn max_irang(x: irang, y: irang) -> irang {
 }
 
 #[allow(clippy::cast_sign_loss)]
-impl<T, const N: usize> core::ops::Index<Ranged<0, {N as i128 - 1}>> for [T; N]
+impl<T, const N: usize> const core::ops::Index<Ranged<0, {N as i128 - 1}>> for [T; N]
 where 
     [u8; memlayout(0, N as i128 - 1).bytes()]:,
     Assert<{conversions::converter_checkers::usize(0, N as i128 - 1)}>: IsAllowed
@@ -579,7 +591,7 @@ where
 }
 
 #[allow(clippy::cast_sign_loss)]
-impl<T, const N: usize> core::ops::IndexMut<Ranged<0, {N as i128 - 1}>> for [T; N]
+impl<T, const N: usize> const core::ops::IndexMut<Ranged<0, {N as i128 - 1}>> for [T; N]
 where 
     [u8; memlayout(0, N as i128 - 1).bytes()]:,
     Assert<{conversions::converter_checkers::usize(0, N as i128 - 1)}>: IsAllowed
@@ -590,7 +602,7 @@ where
 }
 
 #[allow(clippy::cast_sign_loss)]
-impl<T, const N: usize, const MIN: irang, const MAX: irang>
+impl<T, const N: usize, const MIN: irang, const MAX: irang> const
 core::ops::Index<iter::ConstRange<MIN, MAX>> for [T; N] 
 where
     [(); memlayout(MIN, MAX).bytes()]:,
@@ -606,7 +618,7 @@ where
     }
 }
 #[allow(clippy::cast_sign_loss)]
-impl<T, const N: usize, const MIN: irang, const MAX: irang>
+impl<T, const N: usize, const MIN: irang, const MAX: irang> const
 core::ops::IndexMut<iter::ConstRange<MIN, MAX>> for [T; N] 
 where
     [(); memlayout(MIN, MAX).bytes()]:,
@@ -631,7 +643,7 @@ where
 /// - The unclear error reporting
 /// 
 /// ```
-/// # #![feature(adt_const_params)] #![feature(const_panic)] use ranged_integers::*;
+/// # #![feature(adt_const_params)] use ranged_integers::*;
 /// fn ranged_to_bool(r: Ranged<0,1>) -> bool {
 ///     rmatch!{[0 1] r  // Bounds and expression (token tree, 
 ///                      // complex expressions must be in parentheses)
@@ -667,90 +679,90 @@ macro_rules! rmatch {
 #[doc(hidden)]
 /**
 ```
-# #![feature(adt_const_params)] #![feature(const_panic)] use ranged_integers::*;
+# #![feature(adt_const_params)] use ranged_integers::*;
 u8::from(r!(0));
 ```
 
 ```compile_fail
-# #![feature(adt_const_params)] #![feature(const_panic)] use ranged_integers::*;
+# #![feature(adt_const_params)] use ranged_integers::*;
 u8::from(r!(-1));
 ```
 
 ```
-# #![feature(adt_const_params)] #![feature(const_panic)] use ranged_integers::*;
+# #![feature(adt_const_params)] use ranged_integers::*;
 u8::from(r!(255));
 ```
 
 ```compile_fail
-# #![feature(adt_const_params)] #![feature(const_panic)] use ranged_integers::*;
+# #![feature(adt_const_params)] use ranged_integers::*;
 u8::from(r!(256));
 ```
 
 ```
-# #![feature(adt_const_params)] #![feature(const_panic)] use ranged_integers::*;
+# #![feature(adt_const_params)] use ranged_integers::*;
 i8::from(r!(-128));
 ```
 
 
 ```compile_fail
-# #![feature(adt_const_params)] #![feature(const_panic)] use ranged_integers::*;
+# #![feature(adt_const_params)] use ranged_integers::*;
 i8::from(r!(-129));
 ```
 
 ```
-# #![feature(adt_const_params)] #![feature(const_panic)] use ranged_integers::*;
+# #![feature(adt_const_params)] use ranged_integers::*;
 i8::from(r!(127));
 ```
 
 
 ```compile_fail
-# #![feature(adt_const_params)] #![feature(const_panic)] use ranged_integers::*;
+# #![feature(adt_const_params)] use ranged_integers::*;
 i8::from(r!(128));
 ```
 
 
 ```
-# #![feature(const_panic)] #![feature(adt_const_params)] #![feature(generic_const_exprs)]
+# #![feature(adt_const_params)] #![feature(generic_const_exprs)]
 # #[macro_use] extern crate ranged_integers; use ranged_integers::*;
 let a = r![[100 1000] 500] / r![[1 6] 5];
 ```
 ```compile_fail
-# #![feature(const_panic)] #![feature(adt_const_params)] #![feature(generic_const_exprs)]
+# #![feature(adt_const_params)] #![feature(generic_const_exprs)]
 # #[macro_use] extern crate ranged_integers; use ranged_integers::*;
 let a = r![[100 1000] 500] / r![[0 6] 5];
 ```
 ```compile_fail
-# #![feature(const_panic)] #![feature(adt_const_params)] #![feature(generic_const_exprs)]
+# #![feature(adt_const_params)] #![feature(generic_const_exprs)]
 # #[macro_use] extern crate ranged_integers; use ranged_integers::*;
 let a = r![[100 1000] 500] / r![[-1 6] 5];
 ```
 
 ```
-# #![feature(adt_const_params)] #![feature(const_panic)] use ranged_integers::*;
+# #![feature(adt_const_params)] use ranged_integers::*;
 Ranged::<0,1>::new(1);
 ```
 
 
 ```compile_fail
-# #![feature(adt_const_params)] #![feature(const_panic)] use ranged_integers::*;
+# #![feature(adt_const_params)] use ranged_integers::*;
 Ranged::<1,0>::new(1);
 ```
 
 
 ```
-# #![feature(adt_const_params)] #![feature(const_panic)] use ranged_integers::*;
+# #![feature(adt_const_params)] use ranged_integers::*;
 let x: Ranged::<0,1> = Ranged::<0,1>::new(1).unwrap();
 ```
 
 
 ```
-# #![feature(adt_const_params)] #![feature(const_panic)] use ranged_integers::*;
+# #![feature(adt_const_params)] use ranged_integers::*;
 let x: Ranged::<0,1> = Ranged::new(1).unwrap();
 ```
 
 
 ```
-# #![feature(adt_const_params)] #![feature(const_panic)] use ranged_integers::*;
+# #![feature(adt_const_params)] use ranged_integers::*;
 let a = r!([-10 10] 0);
 rmatch!{[-10 10] a
     _ => {()}
@@ -758,7 +770,7 @@ rmatch!{[-10 10] a
 ```
 
 ```compile_fail
-# #![feature(adt_const_params)] #![feature(const_panic)] use ranged_integers::*;
+# #![feature(adt_const_params)] use ranged_integers::*;
 let a = r!([-170141183460469231731687303715884105728 10] 0);
 rmatch!{[-170141183460469231731687303715884105728 10] a
     _ => {()}
@@ -766,11 +778,157 @@ rmatch!{[-170141183460469231731687303715884105728 10] a
 ```
 
 ```compile_fail
-# #![feature(adt_const_params)] #![feature(const_panic)] use ranged_integers::*;
+# #![feature(adt_const_params)] use ranged_integers::*;
 let a = r!([-10 170141183460469231731687303715884105727] 0);
 rmatch!{[-10 170141183460469231731687303715884105727] a
     _ => {()}
 }
 ```
+
+```
+# #![feature(generic_const_exprs)] use ranged_integers::*;
+assert!(  r!([10 50] 30).fit_less_than(r!([10 45] 40)) == Some(r!([10 45] 30))  );
+```
+
+```
+# #![feature(generic_const_exprs)] use ranged_integers::*;
+assert_eq!(r!([10 50] 39).fit_less_than( r!([0 45] 40) ), Some(r!([10 45] 39)));
+```
+
+```
+# #![feature(generic_const_exprs)] use ranged_integers::*;
+assert_eq!(r!([10 50] 39).fit_less_than( r!([30 45] 40) ), Some(r!([10 45] 39)));
+```
+
+```
+# #![feature(generic_const_exprs)] use ranged_integers::*;
+assert_eq!(r!([10 50] 40).fit_less_than( r!([30 45] 40) ), None);
+```
+
+```compile_fail
+# #![feature(generic_const_exprs)] use ranged_integers::*;
+assert_eq!(r!([10 40] 39).fit_less_than( r!([30 45] 40) ), Some(r!([10 45] 39)));
+```
+
+```compile_fail
+# #![feature(generic_const_exprs)] use ranged_integers::*;
+assert_eq!(r!([45 50] 47).fit_less_than( r!([0 45] 40) ), None);
+```
+
+```compile_fail
+# #![feature(generic_const_exprs)] use ranged_integers::*;
+assert_eq!(r!([10 20] 10).fit_less_than( r!([30 45] 40) ), Some(r!([10 45] 10)));
+```
+
+
+
+```
+# #![feature(generic_const_exprs)] use ranged_integers::*;
+assert!(  r!([10 50] 40).fit_less_eq(r!([10 45] 40)) == Some(r!([10 45] 40))  );
+```
+
+```
+# #![feature(generic_const_exprs)] use ranged_integers::*;
+assert_eq!(r!([10 50] 40).fit_less_eq( r!([0 45] 40) ), Some(r!([10 45] 40)));
+```
+
+```
+# #![feature(generic_const_exprs)] use ranged_integers::*;
+assert_eq!(r!([10 50] 40).fit_less_eq( r!([30 45] 40) ), Some(r!([10 45] 40)));
+```
+
+```
+# #![feature(generic_const_exprs)] use ranged_integers::*;
+assert_eq!(r!([10 50] 40).fit_less_eq( r!([40 45] 40) ), Some(r!([10 45] 40)));
+```
+
+```
+# #![feature(generic_const_exprs)] use ranged_integers::*;
+assert_eq!(r!([10 50] 41).fit_less_eq( r!([30 45] 40) ), None);
+```
+
+```compile_fail
+# #![feature(generic_const_exprs)] use ranged_integers::*;
+assert!(  r!([10 40] 40).fit_less_eq(r!([40 45] 40)) == Some(r!([10 40] 40))  );
+```
+```
+# #![feature(generic_const_exprs)] use ranged_integers::*;
+assert!(  r!([10 50] 10).fit_less_eq(r!([5 10] 10)) == Some(r!([10 10] 10))  );
+```
+
+
+```
+# #![feature(generic_const_exprs)] use ranged_integers::*;
+assert!(  r!([10 50] 40).fit_greater_than(r!([20 40] 39)) == Some(r!([20 50] 40))  );
+```
+
+```
+# #![feature(generic_const_exprs)] use ranged_integers::*;
+assert!(  r!([10 50] 40).fit_greater_than(r!([20 50] 39)) == Some(r!([20 50] 40))  );
+```
+
+```
+# #![feature(generic_const_exprs)] use ranged_integers::*;
+assert!(  r!([10 50] 40).fit_greater_than(r!([20 100] 39)) == Some(r!([20 50] 40))  );
+```
+
+```
+# #![feature(generic_const_exprs)] use ranged_integers::*;
+assert_eq!(r!([10 50] 40).fit_greater_than( r!([30 45] 40) ), None);
+```
+
+```compile_fail
+# #![feature(generic_const_exprs)] use ranged_integers::*;
+assert!(  r!([10 50] 40).fit_greater_than(r!([10 40] 39)) == Some(r!([10 50] 40))  );
+```
+
+```compile_fail
+# #![feature(generic_const_exprs)] use ranged_integers::*;
+assert!(  r!([10 50] 50).fit_greater_than(r!([50 55] 50)) == Some(r!([50 50] 50))  );
+```
+
+```compile_fail
+# #![feature(generic_const_exprs)] use ranged_integers::*;
+assert!(  r!([10 50] 40).fit_greater_than(r!([0 10] 5)) == Some(r!([10 50] 40))  );
+```
+
+
+```
+# #![feature(generic_const_exprs)] use ranged_integers::*;
+assert!(  r!([10 50] 40).fit_greater_eq(r!([20 40] 40)) == Some(r!([20 50] 40))  );
+```
+
+```
+# #![feature(generic_const_exprs)] use ranged_integers::*;
+assert!(  r!([10 50] 40).fit_greater_eq(r!([20 50] 40)) == Some(r!([20 50] 40))  );
+```
+
+```
+# #![feature(generic_const_exprs)] use ranged_integers::*;
+assert!(  r!([10 50] 40).fit_greater_eq(r!([20 100] 40)) == Some(r!([20 50] 40))  );
+```
+
+```
+# #![feature(generic_const_exprs)] use ranged_integers::*;
+assert_eq!(r!([10 50] 40).fit_greater_eq( r!([30 45] 41) ), None);
+```
+
+```compile_fail
+# #![feature(generic_const_exprs)] use ranged_integers::*;
+assert!(  r!([10 50] 40).fit_greater_eq(r!([10 40] 39)) == Some(r!([10 50] 40))  );
+```
+
+```
+# #![feature(generic_const_exprs)] use ranged_integers::*;
+assert!(  r!([10 50] 50).fit_greater_eq(r!([50 55] 50)) == Some(r!([50 50] 50))  );
+```
+
+```compile_fail
+# #![feature(generic_const_exprs)] use ranged_integers::*;
+assert!(  r!([10 50] 40).fit_greater_eq(r!([0 10] 5)) == Some(r!([10 50] 40))  );
+```
+
+
+
 */
 struct Failtests;

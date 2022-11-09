@@ -9,3 +9,4 @@ keywords = ["integer","nightly","bounded","refinement"]
 categories = ["data-structures", "no-std", "rust-patterns"]
 license = "MIT"
 repository = "https://github.com/disiamylborane/ranged_integers"
+publish = false

@@ -1,25 +1,31 @@
-//! The internals for `Ranged` type
+// The internals for `Ranged` type
+
+// The internal representation of `Ranged` is struct `RangedRepr`. It contains
+// a `Shrinkable` (capable to be casted to/from i128) type with the required
+// size.
+
+
 
 #![doc(hidden)]
 #![allow(clippy::inline_always)]
 
 use super::irang;
 
-// A trait implemented for any struct that may represent
-// a ranged integer. It may be converted to and from irang.
+// Shrinkable type can be casted to/from irang
+// It must be implemented for any type inside Ranged
 #[const_trait]
-pub trait Shrinkable: Sized + Copy + ~const core::marker::Destruct {
+trait Shrinkable: Sized + Copy + ~const core::marker::Destruct {
     fn shrinkfrom(_: irang) -> Self;
     fn shrinkinto(self) -> irang;
 }
 
-// A type-resolving trait specifying the integer size
+// A type-resolving trait, which specifies the integer size
 #[const_trait]
-pub trait IntSize {
+trait RangedPrimitiveSelector {
     type Primitive: ~const Shrinkable;
 }
 
-macro_rules! wrap_primitive {
+macro_rules! describe_primitives {
     ($($name:ident $repr:ident,)*) => {
         $(
             #[repr(transparent)]
@@ -33,7 +39,7 @@ macro_rules! wrap_primitive {
                 fn shrinkinto(self) -> irang { self.inner as irang }
             }
 
-            impl const IntSize for IntSizeWrap<{ IntLayout::$repr }> {
+            impl const RangedPrimitiveSelector for RangedTypeGenerator<{ IntLayout::$repr }> {
                 type Primitive = $name;
             }
         )*
@@ -41,7 +47,7 @@ macro_rules! wrap_primitive {
 }
 
 
-wrap_primitive!{
+describe_primitives!{
     U8 u8,
     U16 u16,
     U32 u32,
@@ -53,17 +59,18 @@ wrap_primitive!{
     I128 i128,
 }
 
+
 #[derive(PartialEq, Eq, Clone, Copy)]
 #[doc(hidden)]
 pub struct Trivial;
 impl const Shrinkable for Trivial {
-    #[inline(always)]
-    fn shrinkfrom(_: irang) -> Self { Self }
-    #[inline(always)]
-    fn shrinkinto(self) -> irang { unreachable!() }
+    #[inline(always)] fn shrinkfrom(_: irang) -> Self { Self }
+    #[inline(always)] fn shrinkinto(self) -> irang { unreachable!() }
 }
 
+
 // A helper enum specifying the amount of bytes needed for a Ranged
+// and a data type inside Ranged
 #[derive(PartialEq, Eq, Copy, Clone)]
 #[allow(non_camel_case_types)]
 pub enum IntLayout {Trivial, i8, u8, i16, u16, i32, u32, i64, u64, i128}
@@ -87,33 +94,44 @@ impl IntLayout {
 }
 
 
-// Convert the IntLayout into the corresponding type
+// Convert the `IntLayout` into the corresponding type
+//
+// The trait RangedPrimitiveSelector is implemented for this type with
+// the specialization for any of the variants of IntLayout. The
+// RangedPrimitiveSelector::Primitive type is a type which is needed to
+// hold the specific IntLayout
 #[doc(hidden)]
 #[derive(Copy, Clone)]
-pub struct IntSizeWrap<const N: IntLayout>;
+pub struct RangedTypeGenerator<const N: IntLayout>;
 
-impl<const N: IntLayout> const IntSize for IntSizeWrap<N> {
+impl<const N: IntLayout> const RangedPrimitiveSelector for RangedTypeGenerator<N> {
     default type Primitive = I128;
 }
 
-impl const IntSize for IntSizeWrap<{ IntLayout::Trivial }> {
+impl const RangedPrimitiveSelector for RangedTypeGenerator<{ IntLayout::Trivial }> {
     type Primitive = Trivial;
 }
 
 
 // The internal representation of Ranged
+//
+// Having the IntLayout parameter, it chooses a primitive data type to be
+// hold inside with the help of <RangedTypeGenerator as RangedPrimitiveSelector>
+// to select a needed primitive type, one of Trivial (zero-sized) or an integer
+// primitive
+#[repr(transparent)]
 #[derive(Clone, Copy)]
-pub struct NumberBytes<const LAYOUT: IntLayout>
+pub struct RangedRepr<const LAYOUT: IntLayout>
 {
-    bytes: <IntSizeWrap<LAYOUT> as IntSize>::Primitive,
+    bytes: <RangedTypeGenerator<LAYOUT> as RangedPrimitiveSelector>::Primitive,
 }
 
 // Convert NumberBytes to and from integers.
-impl<const LAYOUT: IntLayout> NumberBytes<LAYOUT>
+impl<const LAYOUT: IntLayout> RangedRepr<LAYOUT>
 {
     #[inline(always)]
     pub(crate) const fn from_irang(v: irang) -> Self {
-        Self {bytes: <IntSizeWrap<LAYOUT> as IntSize>::Primitive::shrinkfrom(v)}
+        Self {bytes: <RangedTypeGenerator<LAYOUT> as RangedPrimitiveSelector>::Primitive::shrinkfrom(v)}
     }
 
     #[inline(always)]

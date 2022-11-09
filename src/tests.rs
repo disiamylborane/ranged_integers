@@ -602,3 +602,36 @@ fn test_rmatch() {
     let all_digits = r!(0..=9).into_iter().map(rmatch_digit).collect::<Vec<_>>().join(" ");
     assert_eq!(all_digits, "Zero One Two Three Four Five Six Seven Eight Nine");
 }
+
+#[test]
+fn type_constraining_comparisons() {
+    {
+
+        let ttx = r!([10 50] 30).fit_less_than(r!([10 45] 40));
+
+        let a: Ranged<20, 100> = r!([] 30);
+        let b: Ranged<10, 50> = r!([] 40);
+    
+        let x: Option<Ranged<20, 50>> = a.fit_less_than(b);
+        let y: Option<Ranged<20, 50>> = b.fit_greater_than(a);
+    
+        assert_eq!(x.unwrap(), 30);
+        assert_eq!(y.unwrap(), 40);
+    }
+
+    {
+        let a: Ranged<20, 100> = r!([] 40);
+        let b: Ranged<10, 50> = r!([] 30);
+    
+        let x: Option<Ranged<20, 50>> = a.fit_less_than(b);
+        let y: Option<Ranged<20, 50>> = b.fit_greater_than(a);
+    
+        assert_eq!(x, None);
+        assert_eq!(y, None);
+    }
+
+    {
+        assert_eq!(r!([10 50] 39).fit_less_than( r!([0 45] 40) ), Some(r!([] 39)));
+        assert_eq!(r!([10 50] 39).fit_less_than( r!([15 45] 40) ), Some(r!([] 39)));
+    }
+}

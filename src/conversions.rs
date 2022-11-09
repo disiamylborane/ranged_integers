@@ -115,10 +115,22 @@ pub const fn expansion_possible(s_min: irang, s_max: irang, r_min: irang, r_max:
     OperationPossibility::allow_if(r_min <= s_min && r_max >= s_max)
 }
 
+#[must_use]
+#[doc(hidden)]
+pub const fn lessthan(a: irang, b: irang) -> OperationPossibility {
+    OperationPossibility::allow_if(a < b)
+}
+#[must_use]
+#[doc(hidden)]
+pub const fn lesseq(a: irang, b: irang) -> OperationPossibility {
+    OperationPossibility::allow_if(a <= b)
+}
+
 impl<const MIN: irang, const MAX: irang> Ranged<MIN, MAX>
 where [u8; memlayout(MIN, MAX).bytes()]:
 {
     /// Convert to the Ranged with the wider bounds
+    #[inline]
     pub const fn expand<const RMIN: irang, const RMAX: irang>(self) -> Ranged<RMIN, RMAX>
     where
         [u8; memlayout(RMIN, RMAX).bytes()]: ,
@@ -128,21 +140,92 @@ where [u8; memlayout(MIN, MAX).bytes()]:
     }
 
     /// Convert to the other `Ranged`, returning `None` if the value is out of range
+    #[inline]
     pub const fn fit<const RMIN: irang, const RMAX: irang>(self) -> Option<Ranged<RMIN, RMAX>>
     where [u8; memlayout(RMIN, RMAX).bytes()]: {
         Ranged::<RMIN, RMAX>::new(self.get())
     }
 
     /// Change the `MIN` value of Ranged bounds, returning `None` if the value is out of range
+    #[inline]
     pub const fn fit_max<const RMAX: irang>(self) -> Option<Ranged<MIN, RMAX>>
     where [u8; memlayout(MIN, RMAX).bytes()]: {
         Ranged::<MIN, RMAX>::new(self.get())
     }
 
     /// Change the `MAX` value of Ranged bounds, returning `None` if the value is out of range
+    #[inline]
     pub const fn fit_min<const RMIN: irang>(self) -> Option<Ranged<RMIN, MAX>>
     where [u8; memlayout(RMIN, MAX).bytes()]: {
         Ranged::<RMIN, MAX>::new(self.get())
+    }
+
+    /// Compares two `Ranged` vaues. If self is less than the other, it
+    /// returns a Ranged with the same value and shrinked bounds.
+    /// 
+    /// Allowed only if the ranges interleave.
+    #[inline]
+    pub const fn fit_less_than<const RMIN: irang, const RMAX: irang>(self, other: Ranged<RMIN, RMAX>) -> Option<Ranged<MIN, RMAX>> 
+    where
+        [u8; memlayout(RMIN, RMAX).bytes()]:,
+        [u8; memlayout(MIN, RMAX).bytes()]:,
+        Assert<{lessthan(RMAX, MAX)}>: IsAllowed,
+        Assert<{lessthan(MIN, RMAX)}>: IsAllowed,
+    {
+        if self < other {
+            Some(unsafe{ Ranged::__unsafe_new(self.get()) })
+        } else {None}
+    }
+
+    /// Compares two `Ranged` vaues. If self is less than or equal to the other, it
+    /// returns a Ranged with the same value and shrinked bounds.
+    /// 
+    /// Allowed only if the ranges interleave.
+    #[inline]
+    pub const fn fit_less_eq<const RMIN: irang, const RMAX: irang>(self, other: Ranged<RMIN, RMAX>) -> Option<Ranged<MIN, RMAX>> 
+    where
+        [u8; memlayout(RMIN, RMAX).bytes()]:,
+        [u8; memlayout(MIN, RMAX).bytes()]:,
+        Assert<{lessthan(RMAX, MAX)}>: IsAllowed,
+        Assert<{lesseq(MIN, RMAX)}>: IsAllowed,
+    {
+        if self <= other {
+            Some(unsafe{ Ranged::__unsafe_new(self.get()) })
+        } else {None}
+    }
+
+    /// Compares two `Ranged` vaues. If self is greater than the other, it
+    /// returns a Ranged with the same value and shrinked bounds.
+    /// 
+    /// Allowed only if the ranges interleave.
+    #[inline]
+    pub const fn fit_greater_than<const RMIN: irang, const RMAX: irang>(self, other: Ranged<RMIN, RMAX>) -> Option<Ranged<RMIN, MAX>> 
+    where
+        [u8; memlayout(RMIN, RMAX).bytes()]:,
+        [u8; memlayout(RMIN, MAX).bytes()]:,
+        Assert<{lessthan(MIN, RMIN)}>: IsAllowed,
+        Assert<{lessthan(RMIN, MAX)}>: IsAllowed,
+    {
+        if self > other {
+            Some(unsafe{ Ranged::__unsafe_new(self.get()) })
+        } else {None}
+    }
+
+    /// Compares two `Ranged` vaues. If self is greater than or equal to the other, it
+    /// returns a Ranged with the same value and shrinked bounds.
+    /// 
+    /// Allowed only if the ranges interleave.
+    #[inline]
+    pub const fn fit_greater_eq<const RMIN: irang, const RMAX: irang>(self, other: Ranged<RMIN, RMAX>) -> Option<Ranged<RMIN, MAX>> 
+    where
+        [u8; memlayout(RMIN, RMAX).bytes()]:,
+        [u8; memlayout(RMIN, MAX).bytes()]:,
+        Assert<{lessthan(MIN, RMIN)}>: IsAllowed,
+        Assert<{lesseq(RMIN, MAX)}>: IsAllowed,
+    {
+        if self >= other {
+            Some(unsafe{ Ranged::__unsafe_new(self.get()) })
+        } else {None}
     }
 
     #[deprecated(note = "use method fit() instead")]

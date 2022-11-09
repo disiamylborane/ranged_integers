@@ -63,7 +63,6 @@ where [u8; memlayout(MIN, MAX).bytes()]:,
     }
 
     #[inline]
-    #[allow(clippy::option_if_let_else)]
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
         let cval = self.current?;
         if let Some(out) = Ranged::new(cval.get() + n as i128) {

@@ -1,3 +1,5 @@
+// Any arithmetic operation are first of all to recalculate the bounds
+
 use crate::{Assert, IsAllowed, OperationPossibility, Ranged, irang, max_irang, memlayout, min_irang};
 
 impl<const AMIN: irang, const AMAX: irang, const BMIN: irang, const BMAX: irang> const
@@ -28,6 +30,9 @@ where
     }
 }
 
+// The current (10.2022) of Rust are not capable to work with iterators out-of-the-box
+// in const environments. The following macros and functions are the ad-hoc replacers
+// for min/max functions
 macro_rules! reduce {
     ($fn:ident, $a:expr) => ( $a );
     ($fn:ident, $a:expr, $($args:expr),+) => {
@@ -209,7 +214,7 @@ where
 }
 
 
-#[allow(clippy::use_self)]
+#[allow(clippy::use_self)]  // False positive clippy lint
 impl<const MIN: irang, const MAX: irang> const
     core::cmp::PartialEq<Ranged<MIN, MAX>> for irang
 where
@@ -339,7 +344,7 @@ where
     }
 }
 
-#[allow(clippy::use_self)]
+#[allow(clippy::use_self)]  // False positive clippy lint
 impl<const AMIN: irang, const AMAX: irang> const
     core::cmp::PartialOrd<Ranged<AMIN, AMAX>> for irang
 where
