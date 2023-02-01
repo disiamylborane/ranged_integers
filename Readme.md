@@ -1,7 +1,7 @@
 # Ranged integers [nightly only]
 
-**Note: the library causes ICEs on the modern Rust toolchains.**
-**The last acceptable Rust toolchain is nightly-2022-11-26.**
+**Note: the library causes ICEs on some Rust toolchains.**
+**The current version (0.7.1) was tested on nightly-2023-02-01.**
 
 [Documentation at docs.rs](https://docs.rs/ranged_integers)
 

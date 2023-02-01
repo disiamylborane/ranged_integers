@@ -160,7 +160,7 @@ where [u8; memlayout(MIN, MAX).bytes()]:
         Ranged::<RMIN, MAX>::new(self.get())
     }
 
-    /// Compares two `Ranged` vaues. If self is less than the other, it
+    /// Compares two `Ranged` values. If self is less than the other, it
     /// returns a Ranged with the same value and shrinked bounds.
     /// 
     /// Allowed only if the ranges interleave.
@@ -177,7 +177,7 @@ where [u8; memlayout(MIN, MAX).bytes()]:
         } else {None}
     }
 
-    /// Compares two `Ranged` vaues. If self is less than or equal to the other, it
+    /// Compares two `Ranged` values. If self is less than or equal to the other, it
     /// returns a Ranged with the same value and shrinked bounds.
     /// 
     /// Allowed only if the ranges interleave.
@@ -194,7 +194,7 @@ where [u8; memlayout(MIN, MAX).bytes()]:
         } else {None}
     }
 
-    /// Compares two `Ranged` vaues. If self is greater than the other, it
+    /// Compares two `Ranged` values. If self is greater than the other, it
     /// returns a Ranged with the same value and shrinked bounds.
     /// 
     /// Allowed only if the ranges interleave.
@@ -211,7 +211,7 @@ where [u8; memlayout(MIN, MAX).bytes()]:
         } else {None}
     }
 
-    /// Compares two `Ranged` vaues. If self is greater than or equal to the other, it
+    /// Compares two `Ranged` values. If self is greater than or equal to the other, it
     /// returns a Ranged with the same value and shrinked bounds.
     /// 
     /// Allowed only if the ranges interleave.
