@@ -1,11 +1,13 @@
 
+use crate::holder::{AlignWrap, Aligner};
+
 use super::{Assert, IsAllowed, OperationPossibility, Ranged, irang, memlayout};
 
 use core::convert::TryFrom;
 
 /// An iterator through given range
 pub struct Iter<const MIN: irang, const MAX: irang> 
-where [u8; memlayout(MIN, MAX).bytes()]:,
+where [u8; memlayout(MIN, MAX).bytes()]:,AlignWrap<{memlayout(MIN, MAX)}>: Aligner,
 {
     pub(crate) current: Option<Ranged<MIN, MAX>>
 }
@@ -31,10 +33,10 @@ where [u8; memlayout(MIN, MAX).bytes()]:,
 /// ```
 #[derive(Clone, Copy)]
 pub struct ConstRange<const MIN: irang, const MAX: irang>
-where [(); memlayout(MIN, MAX).bytes()]: ;
+where [(); memlayout(MIN, MAX).bytes()]:, AlignWrap<{memlayout(MIN, MAX)}>: Aligner, ;
 
 impl<const MIN: irang, const MAX: irang> IntoIterator for ConstRange<MIN, MAX>
-where [(); memlayout(MIN, MAX).bytes()]:
+where [(); memlayout(MIN, MAX).bytes()]:, AlignWrap<{memlayout(MIN, MAX)}>: Aligner,
 {
     type Item = Ranged<MIN, MAX>;
     type IntoIter = Iter<MIN, MAX>;
@@ -44,7 +46,7 @@ where [(); memlayout(MIN, MAX).bytes()]:
 }
 
 impl<const MIN: irang, const MAX: irang> Iterator for Iter<MIN, MAX>
-where [u8; memlayout(MIN, MAX).bytes()]:,
+where [u8; memlayout(MIN, MAX).bytes()]:, AlignWrap<{memlayout(MIN, MAX)}>: Aligner,
 {
     type Item = Ranged<MIN, MAX>;
 
@@ -96,6 +98,7 @@ pub const fn range_fits_usize(min: irang, max: irang) -> OperationPossibility {
 impl<const MIN: irang, const MAX: irang> ExactSizeIterator for Iter<MIN, MAX>
 where
     [u8; memlayout(MIN, MAX).bytes()]:,
+    AlignWrap<{memlayout(MIN, MAX)}>: Aligner,
     Assert<{range_fits_usize(MAX, MIN)}>: IsAllowed,
 {}
 

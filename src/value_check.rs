@@ -26,7 +26,7 @@ impl IsAllowed for Assert<{OperationPossibility::Allowed}> {}
 
 // This enum is used instead of `bool` for better compile error handling
 #[doc(hidden)]
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, core::marker::ConstParamTy)]
 pub enum OperationPossibility {
     Forbidden,
     Allowed

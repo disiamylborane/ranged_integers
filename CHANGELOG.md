@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.0
+
+- **Changed** updated to the new version of Rust (nightly-2024-02-04).
+- (**Changed** to prevent ICEs, the internals were reverted to the old byte array-based version;
+the specialization feature was disabled and an additional trait bound was added to Ranged type out of necessity).
+
 ## 0.7.1
 
 - **Changed** const-ify array indexing traits.

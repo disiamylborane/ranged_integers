@@ -126,7 +126,10 @@
 //!
 //! ### `int` -> `Ranged` conversion
 //!
-//! Way 1: ensure the bounds with [`Ranged::new(i128) -> Option<Ranged>`](struct.Ranged.html#method.new) function
+//! Way 1: ensure the bounds with [`Ranged::new(i128) -> Option<Ranged>`](struct.Ranged.html#method.new) function.
+//! 
+//! **Note**: due to incomplete features limitations, the function may fail to compile with
+//! the 'trait bound is not satisfied' if the bounds are not explicitly specified.
 //!
 //! ```
 //! # #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
@@ -135,7 +138,8 @@
 //! assert!(Ranged::<0, 6>::new(some_int) == Some(r!([0 6] 4)));
 //! assert!(Ranged::<0, 6>::new(some_wrong_int) == None);
 //!
-//! move_player(Ranged::new(some_int).unwrap());
+//! move_player(Ranged::new(some_int).unwrap());  // this call may fail to compile
+//!                                               // use Ranged::<0, 6>::new instead
 //! ```
 //!
 //! Way 2: use the [`Remainder operation`](struct.Ranged.html#impl-Rem<Ranged<VAL%2C%20VAL>>) with the "const" divisor
@@ -359,7 +363,6 @@
 #![feature(generic_const_exprs)]
 
 #![feature(const_trait_impl)]
-#![feature(specialization)]
 #![feature(const_refs_to_cell)]
 
 #![deny(missing_docs)]
@@ -378,6 +381,7 @@ mod tests;
 
 #[doc(hidden)]
 pub mod value_check;
+use holder::{AlignWrap, Aligner};
 use value_check::{Assert, IsAllowed, OperationPossibility};
 
 mod holder;
@@ -409,7 +413,7 @@ pub const fn memlayout(min: irang, max: irang) -> holder::IntLayout {
 #[repr(transparent)]
 #[derive(Clone, Copy)]
 pub struct Ranged<const MIN: irang, const MAX: irang>
-where [u8; memlayout(MIN, MAX).bytes()]:,
+where [u8; memlayout(MIN, MAX).bytes()]:,AlignWrap<{memlayout(MIN, MAX)}>: Aligner,
 {
     v: holder::RangedRepr<{ memlayout(MIN, MAX) }>,
 }
@@ -422,7 +426,7 @@ pub const fn allow_creation(min: irang, v: irang, max: irang) -> bool {
 
 impl<const MIN: irang, const MAX: irang> Ranged<MIN, MAX>
 where
-    [u8; memlayout(MIN, MAX).bytes()]: ,
+    [u8; memlayout(MIN, MAX).bytes()]: ,AlignWrap<{memlayout(MIN, MAX)}>: Aligner,
 {
     #[allow(clippy::inline_always)] #[must_use] #[inline(always)]
     const unsafe fn __unsafe_new(n: irang) -> Self {
@@ -439,6 +443,9 @@ where
     }
 
     /// Create a Ranged value checking the bounds at runtime
+    /// 
+    /// **Note**: due to incomplete features limitations, the function may fail to compile with
+    /// the 'trait bound is not satisfied' if the bounds are not explicitly specified.
     /// 
     /// # Example
     /// 
@@ -550,7 +557,7 @@ macro_rules! r {
 }
 
 impl<const MIN: irang, const MAX: irang> core::fmt::Display for Ranged<MIN, MAX>
-where [(); memlayout(MIN, MAX).bytes()]: ,
+where [(); memlayout(MIN, MAX).bytes()]: ,AlignWrap<{memlayout(MIN, MAX)}>: Aligner,
 {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.get())
@@ -558,7 +565,7 @@ where [(); memlayout(MIN, MAX).bytes()]: ,
 }
 
 impl<const MIN: irang, const MAX: irang> core::fmt::Debug for Ranged<MIN, MAX>
-where [(); memlayout(MIN, MAX).bytes()]: ,
+where [(); memlayout(MIN, MAX).bytes()]: ,AlignWrap<{memlayout(MIN, MAX)}>: Aligner,
 {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         if MIN == MAX {
@@ -581,7 +588,7 @@ pub const fn max_irang(x: irang, y: irang) -> irang {
 #[allow(clippy::cast_sign_loss)]
 impl<T, const N: usize> const core::ops::Index<Ranged<0, {N as i128 - 1}>> for [T; N]
 where 
-    [u8; memlayout(0, N as i128 - 1).bytes()]:,
+    [u8; memlayout(0, N as i128 - 1).bytes()]:,AlignWrap<{memlayout(0, N as i128 - 1)}>: Aligner,
     Assert<{conversions::converter_checkers::usize(0, N as i128 - 1)}>: IsAllowed
 {
     type Output = T;
@@ -593,7 +600,7 @@ where
 #[allow(clippy::cast_sign_loss)]
 impl<T, const N: usize> const core::ops::IndexMut<Ranged<0, {N as i128 - 1}>> for [T; N]
 where 
-    [u8; memlayout(0, N as i128 - 1).bytes()]:,
+    [u8; memlayout(0, N as i128 - 1).bytes()]:,AlignWrap<{memlayout(0, N as i128 - 1)}>: Aligner,
     Assert<{conversions::converter_checkers::usize(0, N as i128 - 1)}>: IsAllowed
 {
     fn index_mut(&mut self, index: Ranged<0, {N as i128 - 1}>) -> &mut Self::Output {
@@ -606,6 +613,7 @@ impl<T, const N: usize, const MIN: irang, const MAX: irang> const
 core::ops::Index<iter::ConstRange<MIN, MAX>> for [T; N] 
 where
     [(); memlayout(MIN, MAX).bytes()]:,
+    AlignWrap<{memlayout(MIN, MAX)}>: Aligner,
     [T; (MAX-MIN+1) as usize]:,
     Assert<{conversions::converter_checkers::usize(MIN, MAX)}>: IsAllowed
 {
@@ -622,6 +630,7 @@ impl<T, const N: usize, const MIN: irang, const MAX: irang> const
 core::ops::IndexMut<iter::ConstRange<MIN, MAX>> for [T; N] 
 where
     [(); memlayout(MIN, MAX).bytes()]:,
+    AlignWrap<{memlayout(MIN, MAX)}>: Aligner,
     [T; (MAX-MIN+1) as usize]:,
     Assert<{conversions::converter_checkers::usize(MIN, MAX)}>: IsAllowed
 {
@@ -660,8 +669,10 @@ macro_rules! rmatch {
         )*
     ) => {
         {
+            #[allow(renamed_and_removed_lints)]
             #[deny(const_err)]
             const _MINF: i128 = $min - 1;
+            #[allow(renamed_and_removed_lints)]
             #[deny(const_err)]
             const _PINF: i128 = $max + 1;
             let _v: Ranged<$min, $max> = $val;
@@ -757,7 +768,7 @@ let x: Ranged::<0,1> = Ranged::<0,1>::new(1).unwrap();
 
 ```
 # #![feature(adt_const_params)] use ranged_integers::*;
-let x: Ranged::<0,1> = Ranged::new(1).unwrap();
+let x: Ranged::<0,1> = Ranged::<0,1>::new(1).unwrap();
 ```
 
 

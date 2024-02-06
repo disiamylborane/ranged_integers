@@ -1,13 +1,16 @@
 // Any arithmetic operation are first of all to recalculate the bounds
 
-use crate::{Assert, IsAllowed, OperationPossibility, Ranged, irang, max_irang, memlayout, min_irang};
+use crate::{holder::{AlignWrap, Aligner}, irang, max_irang, memlayout, min_irang, Assert, IsAllowed, OperationPossibility, Ranged};
 
 impl<const AMIN: irang, const AMAX: irang, const BMIN: irang, const BMAX: irang> const
 core::ops::Add<Ranged<BMIN, BMAX>> for Ranged<AMIN, AMAX>
 where
     [(); memlayout(AMIN, AMAX).bytes()]:,
     [(); memlayout(BMIN, BMAX).bytes()]:,
+    AlignWrap<{memlayout(AMIN, AMAX)}>: Aligner,
+    AlignWrap<{memlayout(BMIN, BMAX)}>: Aligner,
     [(); memlayout(AMIN + BMIN, AMAX + BMAX).bytes()]:,
+    AlignWrap<{memlayout(AMIN + BMIN, AMAX + BMAX)}>: Aligner,
 {
     type Output = Ranged<{ AMIN + BMIN }, { AMAX + BMAX }>;
 
@@ -22,6 +25,9 @@ where
     [(); memlayout(AMIN, AMAX).bytes()]:,
     [(); memlayout(BMIN, BMAX).bytes()]:,
     [(); memlayout(AMIN - BMAX, AMAX - BMIN).bytes()]:,
+    AlignWrap<{memlayout(AMIN, AMAX)}>: Aligner,
+    AlignWrap<{memlayout(BMIN, BMAX)}>: Aligner,
+    AlignWrap<{memlayout(AMIN - BMAX, AMAX - BMIN)}>: Aligner,
 {
     type Output = Ranged<{ AMIN - BMAX }, { AMAX - BMIN }>;
 
@@ -69,6 +75,12 @@ where
         max_cross(AMIN, AMAX, BMIN, BMAX),
     )
     .bytes()]: ,
+    AlignWrap<{memlayout(AMIN, AMAX)}>: Aligner,
+    AlignWrap<{memlayout(BMIN, BMAX)}>: Aligner,
+    AlignWrap<{memlayout(
+        min_cross(AMIN, AMAX, BMIN, BMAX),
+        max_cross(AMIN, AMAX, BMIN, BMAX),
+    )}>: Aligner,
 {
     type Output =
         Ranged<{ min_cross(AMIN, AMAX, BMIN, BMAX) }, { max_cross(AMIN, AMAX, BMIN, BMAX) }>;
@@ -109,6 +121,12 @@ where
         singleside_div_max(AMIN, AMAX, BMIN, BMAX),
     )
     .bytes()]: ,
+    AlignWrap<{memlayout(AMIN, AMAX)}>: Aligner,
+    AlignWrap<{memlayout(BMIN, BMAX)}>: Aligner,
+    AlignWrap<{memlayout(
+        singleside_div_min(AMIN, AMAX, BMIN, BMAX),
+        singleside_div_max(AMIN, AMAX, BMIN, BMAX),
+    )}>: Aligner,
 
     Assert<{ allow_division(BMIN, BMAX) }>: IsAllowed,
 {
@@ -188,6 +206,12 @@ where
         singleside_rem_max(AMIN, AMAX, BMIN, BMAX),
     )
     .bytes()]: ,
+    AlignWrap<{memlayout(AMIN, AMAX)}>: Aligner,
+    AlignWrap<{memlayout(BMIN, BMAX)}>: Aligner,
+    AlignWrap<{memlayout(
+        singleside_rem_min(AMIN, AMAX, BMIN, BMAX),
+        singleside_rem_max(AMIN, AMAX, BMIN, BMAX),
+    )}>: Aligner,
 
     Assert<{ allow_division(BMIN, BMAX) }>: IsAllowed,
 {
@@ -205,6 +229,8 @@ impl<const MIN: irang, const MAX: irang> const core::ops::Neg for Ranged<MIN, MA
 where
     [(); memlayout(MIN, MAX).bytes()]: ,
     [(); memlayout(-MAX, -MIN).bytes()]: ,
+    AlignWrap<{memlayout(MIN, MAX)}>: Aligner,
+    AlignWrap<{memlayout(-MAX, -MIN)}>: Aligner,
 {
     type Output = Ranged<{ -MAX }, { -MIN }>;
 
@@ -219,6 +245,7 @@ impl<const MIN: irang, const MAX: irang> const
     core::cmp::PartialEq<Ranged<MIN, MAX>> for irang
 where
     [(); memlayout(MIN, MAX).bytes()]: ,
+    AlignWrap<{memlayout(MIN, MAX)}>: Aligner,
 {
     fn eq(&self, other: &Ranged<MIN, MAX>) -> bool {
         *self == other.get()
@@ -234,6 +261,7 @@ impl<const MIN: irang, const MAX: irang> const
     core::cmp::PartialEq<irang> for Ranged<MIN, MAX>
 where
     [(); memlayout(MIN, MAX).bytes()]: ,
+    AlignWrap<{memlayout(MIN, MAX)}>: Aligner,
 {
     fn eq(&self, other: &irang) -> bool {
         self.get() == *other
@@ -251,6 +279,8 @@ impl<const AMIN: irang, const AMAX: irang, const BMIN: irang, const BMAX: irang>
 where
     [(); memlayout(AMIN, AMAX).bytes()]: ,
     [(); memlayout(BMIN, BMAX).bytes()]: ,
+    AlignWrap<{memlayout(AMIN, AMAX)}>: Aligner,
+    AlignWrap<{memlayout(BMIN, BMAX)}>: Aligner,
 {
     fn eq(&self, rhs: &Ranged<BMIN, BMAX>) -> bool {
         self.get() == rhs.get()
@@ -263,7 +293,9 @@ where
 }
 
 impl<const AMIN: irang, const AMAX: irang> core::cmp::Eq for Ranged<AMIN, AMAX>
-where [(); memlayout(AMIN, AMAX).bytes()]: {}
+where [(); memlayout(AMIN, AMAX).bytes()]: ,
+AlignWrap<{memlayout(AMIN, AMAX)}>: Aligner,
+{}
 
 
 impl<const AMIN: irang, const AMAX: irang, const BMIN: irang, const BMAX: irang> const
@@ -271,6 +303,8 @@ impl<const AMIN: irang, const AMAX: irang, const BMIN: irang, const BMAX: irang>
 where
     [(); memlayout(AMIN, AMAX).bytes()]: ,
     [(); memlayout(BMIN, BMAX).bytes()]: ,
+    AlignWrap<{memlayout(AMIN, AMAX)}>: Aligner,
+    AlignWrap<{memlayout(BMIN, BMAX)}>: Aligner,
 {
     fn partial_cmp(&self, other: &Ranged<BMIN, BMAX>) -> Option<core::cmp::Ordering> {
         let s = self.get();
@@ -297,6 +331,7 @@ where
 impl<const AMIN: irang, const AMAX: irang> const core::cmp::Ord for Ranged<AMIN, AMAX>
 where
     [(); memlayout(AMIN, AMAX).bytes()]: ,
+    AlignWrap<{memlayout(AMIN, AMAX)}>: Aligner,
 {
     fn cmp(&self, other: &Self) -> core::cmp::Ordering {
         let s = self.get();
@@ -321,6 +356,7 @@ impl<const AMIN: irang, const AMAX: irang> const
     core::cmp::PartialOrd<irang> for Ranged<AMIN, AMAX> 
 where
     [(); memlayout(AMIN, AMAX).bytes()]: ,
+    AlignWrap<{memlayout(AMIN, AMAX)}>: Aligner,
 {
     fn partial_cmp(&self, other: &irang) -> Option<core::cmp::Ordering> {
         let s = self.get();
@@ -349,6 +385,7 @@ impl<const AMIN: irang, const AMAX: irang> const
     core::cmp::PartialOrd<Ranged<AMIN, AMAX>> for irang
 where
     [(); memlayout(AMIN, AMAX).bytes()]: ,
+    AlignWrap<{memlayout(AMIN, AMAX)}>: Aligner,
 {
     fn partial_cmp(&self, other: &Ranged<AMIN, AMAX>) -> Option<core::cmp::Ordering> {
         let o = other.get();
@@ -436,14 +473,17 @@ pub const fn singleside_rem_euclid_max(a_min: irang, a_max: irang, b_min: irang,
 
 
 impl<const MIN: irang, const MAX: irang> Ranged<MIN, MAX>
-where [u8; memlayout(MIN, MAX).bytes()]:
+where [u8; memlayout(MIN, MAX).bytes()]:,
+AlignWrap<{memlayout(MIN, MAX)}>: Aligner,
 {
     /// Returns the minimum of two values
     pub const fn min<const BMIN: irang, const BMAX: irang>(self, other: Ranged<BMIN,BMAX>)
              -> Ranged< {min_irang(MIN, BMIN)}, {min_irang(MAX, BMAX)} >
     where 
         [u8; memlayout(BMIN, BMAX).bytes()]:,
-        [u8; memlayout(min_irang(MIN, BMIN), min_irang(MAX, BMAX)).bytes()]:
+        [u8; memlayout(min_irang(MIN, BMIN), min_irang(MAX, BMAX)).bytes()]:,
+        AlignWrap<{memlayout(BMIN, BMAX)}>: Aligner,
+        AlignWrap<{memlayout(min_irang(MIN, BMIN), min_irang(MAX, BMAX))}>: Aligner,
     {
         unsafe { Ranged::__unsafe_new(min_irang(self.get(), other.get() )) }
     }
@@ -453,14 +493,17 @@ where [u8; memlayout(MIN, MAX).bytes()]:
              -> Ranged< {max_irang(MIN, BMIN)}, {max_irang(MAX, BMAX)} >
     where 
         [u8; memlayout(BMIN, BMAX).bytes()]:,
-        [u8; memlayout(max_irang(MIN, BMIN), max_irang(MAX, BMAX)).bytes()]:
+        [u8; memlayout(max_irang(MIN, BMIN), max_irang(MAX, BMAX)).bytes()]:,
+        AlignWrap<{memlayout(BMIN, BMAX)}>: Aligner,
+        AlignWrap<{memlayout(max_irang(MIN, BMIN), max_irang(MAX, BMAX))}>: Aligner,
     {
         unsafe { Ranged::__unsafe_new(max_irang(self.get(), other.get() )) }
     }
 
     /// Computes the absolute value of `self`
     pub const fn abs(self) -> Ranged< {abs_min(MIN, MAX)}, {abs_max(MIN, MAX)} >
-    where [u8; memlayout(abs_min(MIN, MAX), abs_max(MIN, MAX)).bytes()]:
+    where [u8; memlayout(abs_min(MIN, MAX), abs_max(MIN, MAX)).bytes()]:,
+    AlignWrap<{memlayout(abs_min(MIN, MAX), abs_max(MIN, MAX))}>: Aligner,
     {
         unsafe { Ranged::__unsafe_new(self.get().abs()) }
     }
@@ -471,6 +514,8 @@ where [u8; memlayout(MIN, MAX).bytes()]:
     where 
         [u8; memlayout(BMIN, BMAX).bytes()]:,
         [u8; memlayout(singleside_div_euclid_min(MIN, MAX, BMIN, BMAX), singleside_div_euclid_max(MIN, MAX, BMIN, BMAX)).bytes()]:,
+        AlignWrap<{memlayout(BMIN, BMAX)}>: Aligner,
+        AlignWrap<{memlayout(singleside_div_euclid_min(MIN, MAX, BMIN, BMAX), singleside_div_euclid_max(MIN, MAX, BMIN, BMAX))}>: Aligner,
         Assert<{ allow_division(BMIN, BMAX) }>: IsAllowed,
     {
         unsafe { Ranged::__unsafe_new(self.get().div_euclid(rhs.get())) }
@@ -482,6 +527,8 @@ where [u8; memlayout(MIN, MAX).bytes()]:
     where
         [u8; memlayout(BMIN, BMAX).bytes()]:,
         [u8; memlayout(singleside_rem_euclid_min(MIN, MAX, BMIN, BMAX), singleside_rem_euclid_max(MIN, MAX, BMIN, BMAX)).bytes()]:,
+        AlignWrap<{memlayout(BMIN, BMAX)}>: Aligner,
+        AlignWrap<{memlayout(singleside_rem_euclid_min(MIN, MAX, BMIN, BMAX), singleside_rem_euclid_max(MIN, MAX, BMIN, BMAX))}>: Aligner,
         Assert<{ allow_division(BMIN, BMAX) }>: IsAllowed,
     {
         unsafe { Ranged::__unsafe_new(self.get().rem_euclid(rhs.get())) }

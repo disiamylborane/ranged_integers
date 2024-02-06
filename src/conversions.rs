@@ -1,7 +1,7 @@
 use core::str::FromStr;
 
 use crate::{Assert, IsAllowed, OperationPossibility, Ranged, irang, memlayout, arithmetics::allow_division};
-
+use crate::{AlignWrap, Aligner};
 /// Convert an integer value to Ranged according to its own bounds.
 ///
 /// Implemented for integer primitives.
@@ -37,6 +37,7 @@ macro_rules! int_ranged_converters {
 
         impl<const MIN: irang, const MAX: irang> Ranged<MIN, MAX>
         where [u8; memlayout(MIN, MAX).bytes()]:,
+        AlignWrap<{memlayout(MIN, MAX)}>: Aligner,
         {
             $(
                 #[doc=concat!("Convert a Ranged into `", stringify!($t), "` value. Accessible if fits.")]
@@ -52,6 +53,7 @@ macro_rules! int_ranged_converters {
             impl<const MIN: irang, const MAX: irang> const From<Ranged<MIN, MAX>> for $t
             where
                 [u8; memlayout(MIN, MAX).bytes()]:,
+                AlignWrap<{memlayout(MIN, MAX)}>: Aligner,
                 Assert<{converter_checkers::$t(MIN, MAX)}>: IsAllowed,
             {
                 fn from(a: Ranged<MIN, MAX>) -> Self { a.$t() }
@@ -77,6 +79,8 @@ macro_rules! signed_ranged_rem {
             where
                 [(); memlayout(VAL, VAL).bytes()]:,
                 [(); memlayout(1-VAL.abs(), VAL.abs()-1).bytes()]:,
+                AlignWrap<{memlayout(VAL, VAL)}>: Aligner,
+                AlignWrap<{memlayout(1-VAL.abs(), VAL.abs()-1)}>: Aligner,
                 Assert<{ allow_division(VAL, VAL) }>: IsAllowed,
             {
                 type Output = Ranged<{1-VAL.abs()}, {VAL.abs()-1}>;
@@ -97,6 +101,8 @@ macro_rules! unsigned_ranged_rem {
             where
                 [(); memlayout(VAL, VAL).bytes()]:,
                 [(); memlayout(0, VAL.abs()-1).bytes()]:,
+                AlignWrap<{memlayout(VAL, VAL)}>: Aligner,
+                AlignWrap<{memlayout(0, VAL.abs()-1)}>: Aligner,
             {
                 type Output = Ranged<0, {VAL.abs()-1}>;
 
@@ -127,13 +133,15 @@ pub const fn lesseq(a: irang, b: irang) -> OperationPossibility {
 }
 
 impl<const MIN: irang, const MAX: irang> Ranged<MIN, MAX>
-where [u8; memlayout(MIN, MAX).bytes()]:
+where [u8; memlayout(MIN, MAX).bytes()]:,
+AlignWrap<{memlayout(MIN, MAX)}>: Aligner,
 {
     /// Convert to the Ranged with the wider bounds
     #[inline]
     pub const fn expand<const RMIN: irang, const RMAX: irang>(self) -> Ranged<RMIN, RMAX>
     where
         [u8; memlayout(RMIN, RMAX).bytes()]: ,
+        AlignWrap<{memlayout(RMIN, RMAX)}>: Aligner,
         Assert<{ expansion_possible(MIN, MAX, RMIN, RMAX) }>: IsAllowed,
     {
         unsafe { Ranged::__unsafe_new(self.get()) }
@@ -142,21 +150,24 @@ where [u8; memlayout(MIN, MAX).bytes()]:
     /// Convert to the other `Ranged`, returning `None` if the value is out of range
     #[inline]
     pub const fn fit<const RMIN: irang, const RMAX: irang>(self) -> Option<Ranged<RMIN, RMAX>>
-    where [u8; memlayout(RMIN, RMAX).bytes()]: {
+    where [u8; memlayout(RMIN, RMAX).bytes()]:, 
+    AlignWrap<{memlayout(RMIN, RMAX)}>: Aligner, {
         Ranged::<RMIN, RMAX>::new(self.get())
     }
 
     /// Change the `MIN` value of Ranged bounds, returning `None` if the value is out of range
     #[inline]
     pub const fn fit_max<const RMAX: irang>(self) -> Option<Ranged<MIN, RMAX>>
-    where [u8; memlayout(MIN, RMAX).bytes()]: {
+    where [u8; memlayout(MIN, RMAX).bytes()]:, 
+    AlignWrap<{memlayout(MIN, RMAX)}>: Aligner, {
         Ranged::<MIN, RMAX>::new(self.get())
     }
 
     /// Change the `MAX` value of Ranged bounds, returning `None` if the value is out of range
     #[inline]
     pub const fn fit_min<const RMIN: irang>(self) -> Option<Ranged<RMIN, MAX>>
-    where [u8; memlayout(RMIN, MAX).bytes()]: {
+    where [u8; memlayout(RMIN, MAX).bytes()]:, 
+    AlignWrap<{memlayout(RMIN, MAX)}>: Aligner, {
         Ranged::<RMIN, MAX>::new(self.get())
     }
 
@@ -169,10 +180,12 @@ where [u8; memlayout(MIN, MAX).bytes()]:
     where
         [u8; memlayout(RMIN, RMAX).bytes()]:,
         [u8; memlayout(MIN, RMAX).bytes()]:,
+        AlignWrap<{memlayout(RMIN, RMAX)}>: Aligner,
+        AlignWrap<{memlayout(MIN, RMAX)}>: Aligner,
         Assert<{lessthan(RMAX, MAX)}>: IsAllowed,
         Assert<{lessthan(MIN, RMAX)}>: IsAllowed,
     {
-        if self < other {
+        if self.get() < other.get() {
             Some(unsafe{ Ranged::__unsafe_new(self.get()) })
         } else {None}
     }
@@ -186,10 +199,12 @@ where [u8; memlayout(MIN, MAX).bytes()]:
     where
         [u8; memlayout(RMIN, RMAX).bytes()]:,
         [u8; memlayout(MIN, RMAX).bytes()]:,
+        AlignWrap<{memlayout(RMIN, RMAX)}>: Aligner,
+        AlignWrap<{memlayout(MIN, RMAX)}>: Aligner,
         Assert<{lessthan(RMAX, MAX)}>: IsAllowed,
         Assert<{lesseq(MIN, RMAX)}>: IsAllowed,
     {
-        if self <= other {
+        if self.get() <= other.get() {
             Some(unsafe{ Ranged::__unsafe_new(self.get()) })
         } else {None}
     }
@@ -203,10 +218,12 @@ where [u8; memlayout(MIN, MAX).bytes()]:
     where
         [u8; memlayout(RMIN, RMAX).bytes()]:,
         [u8; memlayout(RMIN, MAX).bytes()]:,
+        AlignWrap<{memlayout(RMIN, RMAX)}>: Aligner,
+        AlignWrap<{memlayout(RMIN, MAX)}>: Aligner,
         Assert<{lessthan(MIN, RMIN)}>: IsAllowed,
         Assert<{lessthan(RMIN, MAX)}>: IsAllowed,
     {
-        if self > other {
+        if self.get() > other.get() {
             Some(unsafe{ Ranged::__unsafe_new(self.get()) })
         } else {None}
     }
@@ -220,10 +237,12 @@ where [u8; memlayout(MIN, MAX).bytes()]:
     where
         [u8; memlayout(RMIN, RMAX).bytes()]:,
         [u8; memlayout(RMIN, MAX).bytes()]:,
+        AlignWrap<{memlayout(RMIN, RMAX)}>: Aligner,
+        AlignWrap<{memlayout(RMIN, MAX)}>: Aligner,
         Assert<{lessthan(MIN, RMIN)}>: IsAllowed,
         Assert<{lesseq(RMIN, MAX)}>: IsAllowed,
     {
-        if self >= other {
+        if self.get() >= other.get() {
             Some(unsafe{ Ranged::__unsafe_new(self.get()) })
         } else {None}
     }
@@ -231,7 +250,8 @@ where [u8; memlayout(MIN, MAX).bytes()]:
     #[deprecated(note = "use method fit() instead")]
     /// Convert to the other Ranged, returning None if the value is out of range
     pub const fn try_expand<const RMIN: irang, const RMAX: irang>(self) -> Option<Ranged<RMIN, RMAX>>
-    where [u8; memlayout(RMIN, RMAX).bytes()]: {
+    where [u8; memlayout(RMIN, RMAX).bytes()]:,
+    AlignWrap<{memlayout(RMIN, RMAX)}>: Aligner, {
         Ranged::<RMIN, RMAX>::new(self.get())
     }
 }
@@ -240,7 +260,8 @@ where [u8; memlayout(MIN, MAX).bytes()]:
 pub struct ParseRangedError;
 
 impl<const MIN: irang, const MAX: irang> FromStr for Ranged<MIN,MAX>
-where [(); memlayout(MIN, MAX).bytes()]:
+where [(); memlayout(MIN, MAX).bytes()]:,
+AlignWrap<{memlayout(MIN, MAX)}>: Aligner,
 {
     type Err = ParseRangedError;
 

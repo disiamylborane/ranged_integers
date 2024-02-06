@@ -1,142 +1,195 @@
 // The internals for `Ranged` type
 
 // The internal representation of `Ranged` is struct `RangedRepr`. It contains
-// a `Shrinkable` (capable to be casted to/from i128) type with the required
-// size.
+// a needed-size byte array and a zero-size type to align it.
 
-
+//! The internals for `Ranged` type
 
 #![doc(hidden)]
-#![allow(clippy::inline_always)]
 
 use super::irang;
 
-// Shrinkable type can be casted to/from irang
-// It must be implemented for any type inside Ranged
-#[const_trait]
-trait Shrinkable: Sized + Copy + ~const core::marker::Destruct {
-    fn shrinkfrom(_: irang) -> Self;
-    fn shrinkinto(self) -> irang;
+// A helper trait specifying the alignment
+pub trait Aligner
+{
+    type A: Copy;
 }
-
-// A type-resolving trait, which specifies the integer size
-#[const_trait]
-trait RangedPrimitiveSelector {
-    type Primitive: ~const Shrinkable;
-}
-
-macro_rules! describe_primitives {
-    ($($name:ident $repr:ident,)*) => {
-        $(
-            #[repr(transparent)]
-            #[derive(Clone, Copy)]
-            pub struct $name {inner: $repr}
-
-            impl const Shrinkable for $name {
-                #[inline(always)]
-                fn shrinkfrom(v: irang) -> Self { Self{inner: v as $repr} }
-                #[inline(always)]
-                fn shrinkinto(self) -> irang { self.inner as irang }
-            }
-
-            impl const RangedPrimitiveSelector for RangedTypeGenerator<{ IntLayout::$repr }> {
-                type Primitive = $name;
-            }
-        )*
-    };
-}
-
-
-describe_primitives!{
-    U8 u8,
-    U16 u16,
-    U32 u32,
-    U64 u64,
-    I8 i8,
-    I16 i16,
-    I32 i32,
-    I64 i64,
-    I128 i128,
-}
-
-
-#[derive(PartialEq, Eq, Clone, Copy)]
-#[doc(hidden)]
-pub struct Trivial;
-impl const Shrinkable for Trivial {
-    #[inline(always)] fn shrinkfrom(_: irang) -> Self { Self }
-    #[inline(always)] fn shrinkinto(self) -> irang { unreachable!() }
-}
-
 
 // A helper enum specifying the amount of bytes needed for a Ranged
-// and a data type inside Ranged
-#[derive(PartialEq, Eq, Copy, Clone)]
+#[derive(PartialEq, Eq, Copy, Clone, core::marker::ConstParamTy)]
 #[allow(non_camel_case_types)]
-pub enum IntLayout {Trivial, i8, u8, i16, u16, i32, u32, i64, u64, i128}
-
+pub enum IntLayout {
+    i8, u8, i16, u16, i32, u32, i64, u64, i128, Trivial
+}
 impl IntLayout {
-    #[must_use]
     #[doc(hidden)]
     pub const fn bytes(self) -> usize {
-        macro_rules! get_typesize {
-            (  $($tt:ident)* ) => {
-                match self {
-                    $(
-                        Self::$tt => {core::mem::size_of::<$tt>()}
-                    )+
-                }
-            };
+        match self {
+            Self::i8 => 1,
+            Self::u8 => 1,
+            Self::i16 => 2,
+            Self::u16 => 2,
+            Self::i32 => 4,
+            Self::u32 => 4,
+            Self::i64 => 8,
+            Self::u64 => 8,
+            Self::i128 => 16,
+            Self::Trivial => 0,
         }
-
-        get_typesize! {Trivial i8 u8 i16 u16 i32 u32 i64 u64 i128 }
     }
 }
 
 
-// Convert the `IntLayout` into the corresponding type
-//
-// The trait RangedPrimitiveSelector is implemented for this type with
-// the specialization for any of the variants of IntLayout. The
-// RangedPrimitiveSelector::Primitive type is a type which is needed to
-// hold the specific IntLayout
+// Convert the IntLayout into the corresponding type
 #[doc(hidden)]
 #[derive(Copy, Clone)]
-pub struct RangedTypeGenerator<const N: IntLayout>;
+pub struct AlignWrap<const N: IntLayout>;
+// the internal type must have the alignment of the corresponding integer
+impl Aligner for AlignWrap<{IntLayout::i8}> { type A = i8; }
+impl Aligner for AlignWrap<{IntLayout::u8}> { type A = u8; }
+impl Aligner for AlignWrap<{IntLayout::i16}> { type A = i16; }
+impl Aligner for AlignWrap<{IntLayout::u16}> { type A = u16; }
+impl Aligner for AlignWrap<{IntLayout::i32}> { type A = i32; }
+impl Aligner for AlignWrap<{IntLayout::u32}> { type A = u32; }
+impl Aligner for AlignWrap<{IntLayout::i64}> { type A = i64; }
+impl Aligner for AlignWrap<{IntLayout::u64}> { type A = u64; }
+impl Aligner for AlignWrap<{IntLayout::i128}> { type A = i128; }
+impl Aligner for AlignWrap<{IntLayout::Trivial}> { type A = u8; }
 
-impl<const N: IntLayout> const RangedPrimitiveSelector for RangedTypeGenerator<N> {
-    default type Primitive = I128;
-}
-
-impl const RangedPrimitiveSelector for RangedTypeGenerator<{ IntLayout::Trivial }> {
-    type Primitive = Trivial;
-}
-
-
-// The internal representation of Ranged
-//
-// Having the IntLayout parameter, it chooses a primitive data type to be
-// hold inside with the help of <RangedTypeGenerator as RangedPrimitiveSelector>
-// to select a needed primitive type, one of Trivial (zero-sized) or an integer
-// primitive
-#[repr(transparent)]
+// The internal representation of Ranged: an array of bytes with the length and alignmemt ensured
 #[derive(Clone, Copy)]
-pub struct RangedRepr<const LAYOUT: IntLayout>
+pub(crate) struct RangedRepr<const LAYOUT: IntLayout>
+where
+    AlignWrap<LAYOUT>: Aligner,
+    [u8; LAYOUT.bytes()]:,
 {
-    bytes: <RangedTypeGenerator<LAYOUT> as RangedPrimitiveSelector>::Primitive,
+    // Ensure the alignment
+    _align: [<AlignWrap<LAYOUT> as Aligner>::A; 0],
+    // Bytewise access
+    bytes: [u8; LAYOUT.bytes()],
 }
 
 // Convert NumberBytes to and from integers.
+// This code heavily relies on optimization
 impl<const LAYOUT: IntLayout> RangedRepr<LAYOUT>
+where
+    AlignWrap<LAYOUT> : Aligner,
+    [(); LAYOUT.bytes()]:
 {
+    const fn new() -> Self { Self{_align: [], bytes: [0; LAYOUT.bytes()]} }
+
     #[inline(always)]
     pub(crate) const fn from_irang(v: irang) -> Self {
-        Self {bytes: <RangedTypeGenerator<LAYOUT> as RangedPrimitiveSelector>::Primitive::shrinkfrom(v)}
+        let mut x = Self::new();
+        let bytes = v.to_ne_bytes();
+        match LAYOUT {
+            IntLayout::Trivial => {
+            }
+            IntLayout::i8 => {
+                x.bytes[0] = bytes[0];
+            }
+            IntLayout::u8 => {
+                x.bytes[0] = bytes[0];
+            }
+            IntLayout::i16 => {
+                x.bytes[0] = bytes[0];
+                x.bytes[1] = bytes[1];
+            }
+            IntLayout::u16 => {
+                x.bytes[0] = bytes[0];
+                x.bytes[1] = bytes[1];
+            }
+            IntLayout::i32 => {
+                x.bytes[0] = bytes[0];
+                x.bytes[1] = bytes[1];
+                x.bytes[2] = bytes[2];
+                x.bytes[3] = bytes[3];
+            }
+            IntLayout::u32 => {
+                x.bytes[0] = bytes[0];
+                x.bytes[1] = bytes[1];
+                x.bytes[2] = bytes[2];
+                x.bytes[3] = bytes[3];
+            }
+            IntLayout::i64 => {
+                x.bytes[0] = bytes[0];
+                x.bytes[1] = bytes[1];
+                x.bytes[2] = bytes[2];
+                x.bytes[3] = bytes[3];
+                x.bytes[4] = bytes[4];
+                x.bytes[5] = bytes[5];
+                x.bytes[6] = bytes[6];
+                x.bytes[7] = bytes[7];
+            }
+            IntLayout::u64 => {
+                x.bytes[0] = bytes[0];
+                x.bytes[1] = bytes[1];
+                x.bytes[2] = bytes[2];
+                x.bytes[3] = bytes[3];
+                x.bytes[4] = bytes[4];
+                x.bytes[5] = bytes[5];
+                x.bytes[6] = bytes[6];
+                x.bytes[7] = bytes[7];
+            }
+            IntLayout::i128 => {
+                x.bytes[0] = bytes[0];
+                x.bytes[1] = bytes[1];
+                x.bytes[2] = bytes[2];
+                x.bytes[3] = bytes[3];
+                x.bytes[4] = bytes[4];
+                x.bytes[5] = bytes[5];
+                x.bytes[6] = bytes[6];
+                x.bytes[7] = bytes[7];
+                x.bytes[8] = bytes[8];
+                x.bytes[9] = bytes[9];
+                x.bytes[10] = bytes[10];
+                x.bytes[11] = bytes[11];
+                x.bytes[12] = bytes[12];
+                x.bytes[13] = bytes[13];
+                x.bytes[14] = bytes[14];
+                x.bytes[15] = bytes[15];
+            }
+        }
+
+        x
     }
+
 
     #[inline(always)]
     pub(crate) const fn to_irang(self) -> irang {
-        self.bytes.shrinkinto()
+        let b = self.bytes;
+        match LAYOUT {
+            IntLayout::Trivial => {
+                0
+            }
+            IntLayout::i8 => {
+                i8::from_ne_bytes([b[0]]) as irang
+            }
+            IntLayout::u8 => {
+                u8::from_ne_bytes([b[0]]) as irang
+            }
+            IntLayout::i16 => {
+                i16::from_ne_bytes([b[0], b[1]]) as irang
+            }
+            IntLayout::u16 => {
+                u16::from_ne_bytes([b[0], b[1]]) as irang
+            }
+            IntLayout::i32 => {
+                i32::from_ne_bytes([b[0], b[1], b[2], b[3]]) as irang
+            }
+            IntLayout::u32 => {
+                u32::from_ne_bytes([b[0], b[1], b[2], b[3]]) as irang
+            }
+            IntLayout::i64 => {
+                i64::from_ne_bytes([b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7]]) as irang
+            }
+            IntLayout::u64 => {
+                u64::from_ne_bytes([b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7]]) as irang
+            }
+            IntLayout::i128 => {
+                i128::from_ne_bytes([b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7], b[8], b[9], b[10], b[11], b[12], b[13], b[14], b[15]]) as irang
+            }
+        }
     }
 }
 

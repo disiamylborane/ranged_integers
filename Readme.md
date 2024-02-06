@@ -1,7 +1,7 @@
 # Ranged integers [nightly only]
 
 **Note: the library causes ICEs on some Rust toolchains.**
-**The current version (0.7.1) was tested on nightly-2023-02-01.**
+**The current version (0.8.0) was tested on nightly-2024-02-04.**
 
 [Documentation at docs.rs](https://docs.rs/ranged_integers)
 
