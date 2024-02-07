@@ -11,6 +11,11 @@
 //! ```
 //! // Without this rustc generates errors and sometimes panics.
 //! #![feature(adt_const_params, generic_const_exprs)]
+//!
+//! // This features are for the compile-time arithmetics.
+//! // Note that the crate sometimes causes ICEs with the feature(effects).
+//! #![feature(const_trait_impl)]
+//! #![feature(effects)]
 //! ```
 //! 
 //! # Usage and examples
