@@ -1,19 +1,27 @@
 # Changelog
 
+## 0.9.0
+
+Works on nightly-2024-08-19.
+- **Removed** const arithmetics to be supported by the current version of Rust (nightly-2024-02-04).
+
 ## 0.8.0
 
+Works on nightly-2024-02-04
 - **Changed** updated to the new version of Rust (nightly-2024-02-04).
 - (**Changed** to prevent ICEs, the internals were reverted to the old byte array-based version;
 the specialization feature was disabled and an additional trait bound was added to Ranged type out of necessity).
 
 ## 0.7.1
 
+Works on nightly-2022-11-26
 - **Changed** const-ify array indexing traits.
 - **Added** type constraining comparisons `fit_less_than`, `fit_less_eq`, `fit_greater_than`, `fit_greater_eq`.
 - (**Changed** the naming of internals).
 
 ## 0.7.0
 
+Works on nightly-2022-11-26
 - **Changed** updated to the new version of Nightly rust.
 - **Changed** globally revamped the internal structure of Ranged.
 - **Added** `rmatch` macro and pattern matching over Ranged.

@@ -6,6 +6,7 @@
 //! The internals for `Ranged` type
 
 #![doc(hidden)]
+#![allow(clippy::inline_always)]
 
 use super::irang;
 
@@ -25,14 +26,10 @@ impl IntLayout {
     #[doc(hidden)]
     pub const fn bytes(self) -> usize {
         match self {
-            Self::i8 => 1,
-            Self::u8 => 1,
-            Self::i16 => 2,
-            Self::u16 => 2,
-            Self::i32 => 4,
-            Self::u32 => 4,
-            Self::i64 => 8,
-            Self::u64 => 8,
+            Self::u8 | Self::i8 => 1,
+            Self::i16 | Self::u16 => 2,
+            Self::i32 | Self::u32 => 4,
+            Self::i64 | Self::u64 => 8,
             Self::i128 => 16,
             Self::Trivial => 0,
         }
@@ -58,7 +55,7 @@ impl Aligner for AlignWrap<{IntLayout::Trivial}> { type A = u8; }
 
 // The internal representation of Ranged: an array of bytes with the length and alignmemt ensured
 #[derive(Clone, Copy)]
-pub(crate) struct RangedRepr<const LAYOUT: IntLayout>
+pub struct RangedRepr<const LAYOUT: IntLayout>
 where
     AlignWrap<LAYOUT>: Aligner,
     [u8; LAYOUT.bytes()]:,
@@ -85,43 +82,20 @@ where
         match LAYOUT {
             IntLayout::Trivial => {
             }
-            IntLayout::i8 => {
+            IntLayout::i8 | IntLayout::u8 => {
                 x.bytes[0] = bytes[0];
             }
-            IntLayout::u8 => {
-                x.bytes[0] = bytes[0];
-            }
-            IntLayout::i16 => {
+            IntLayout::i16 | IntLayout::u16 => {
                 x.bytes[0] = bytes[0];
                 x.bytes[1] = bytes[1];
             }
-            IntLayout::u16 => {
-                x.bytes[0] = bytes[0];
-                x.bytes[1] = bytes[1];
-            }
-            IntLayout::i32 => {
+            IntLayout::i32 | IntLayout::u32 => {
                 x.bytes[0] = bytes[0];
                 x.bytes[1] = bytes[1];
                 x.bytes[2] = bytes[2];
                 x.bytes[3] = bytes[3];
             }
-            IntLayout::u32 => {
-                x.bytes[0] = bytes[0];
-                x.bytes[1] = bytes[1];
-                x.bytes[2] = bytes[2];
-                x.bytes[3] = bytes[3];
-            }
-            IntLayout::i64 => {
-                x.bytes[0] = bytes[0];
-                x.bytes[1] = bytes[1];
-                x.bytes[2] = bytes[2];
-                x.bytes[3] = bytes[3];
-                x.bytes[4] = bytes[4];
-                x.bytes[5] = bytes[5];
-                x.bytes[6] = bytes[6];
-                x.bytes[7] = bytes[7];
-            }
-            IntLayout::u64 => {
+            IntLayout::i64 | IntLayout::u64 => {
                 x.bytes[0] = bytes[0];
                 x.bytes[1] = bytes[1];
                 x.bytes[2] = bytes[2];
@@ -153,7 +127,6 @@ where
 
         x
     }
-
 
     #[inline(always)]
     pub(crate) const fn to_irang(self) -> irang {

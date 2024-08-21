@@ -2,7 +2,7 @@
 
 use crate::{holder::{AlignWrap, Aligner}, irang, max_irang, memlayout, min_irang, Assert, IsAllowed, OperationPossibility, Ranged};
 
-impl<const AMIN: irang, const AMAX: irang, const BMIN: irang, const BMAX: irang> const
+impl<const AMIN: irang, const AMAX: irang, const BMIN: irang, const BMAX: irang>
 core::ops::Add<Ranged<BMIN, BMAX>> for Ranged<AMIN, AMAX>
 where
     [(); memlayout(AMIN, AMAX).bytes()]:,
@@ -19,7 +19,7 @@ where
     }
 }
 
-impl<const AMIN: irang, const AMAX: irang, const BMIN: irang, const BMAX: irang> const
+impl<const AMIN: irang, const AMAX: irang, const BMIN: irang, const BMAX: irang>
 core::ops::Sub<Ranged<BMIN, BMAX>> for Ranged<AMIN, AMAX>
 where
     [(); memlayout(AMIN, AMAX).bytes()]:,
@@ -65,7 +65,7 @@ pub const fn min_cross(a_min: irang, a_max: irang, b_min: irang, b_max: irang) -
     min_4((a_min * b_min, a_min * b_max, a_max * b_min, a_max * b_max))
 }
 
-impl<const AMIN: irang, const AMAX: irang, const BMIN: irang, const BMAX: irang> const
+impl<const AMIN: irang, const AMAX: irang, const BMIN: irang, const BMAX: irang>
     core::ops::Mul<Ranged<BMIN, BMAX>> for Ranged<AMIN, AMAX>
 where
     [(); memlayout(AMIN, AMAX).bytes()]: ,
@@ -111,7 +111,7 @@ pub const fn singleside_div_max(a_min: irang, a_max: irang, b_min: irang, b_max:
     max_4((a_min / b_min, a_min / b_max, a_max / b_min, a_max / b_max))
 }
 
-impl<const AMIN: irang, const AMAX: irang, const BMIN: irang, const BMAX: irang> const
+impl<const AMIN: irang, const AMAX: irang, const BMIN: irang, const BMAX: irang>
     core::ops::Div<Ranged<BMIN, BMAX>> for Ranged<AMIN, AMAX>
 where
     [(); memlayout(AMIN, AMAX).bytes()]: ,
@@ -196,7 +196,7 @@ pub const fn singleside_rem_max(a_min: irang, a_max: irang, b_min: irang, b_max:
 
 
 
-impl<const AMIN: irang, const AMAX: irang, const BMIN: irang, const BMAX: irang> const
+impl<const AMIN: irang, const AMAX: irang, const BMIN: irang, const BMAX: irang>
     core::ops::Rem<Ranged<BMIN, BMAX>> for Ranged<AMIN, AMAX>
 where
     [(); memlayout(AMIN, AMAX).bytes()]: ,
@@ -225,7 +225,7 @@ where
     }
 }
 
-impl<const MIN: irang, const MAX: irang> const core::ops::Neg for Ranged<MIN, MAX>
+impl<const MIN: irang, const MAX: irang> core::ops::Neg for Ranged<MIN, MAX>
 where
     [(); memlayout(MIN, MAX).bytes()]: ,
     [(); memlayout(-MAX, -MIN).bytes()]: ,
@@ -241,7 +241,7 @@ where
 
 
 #[allow(clippy::use_self)]  // False positive clippy lint
-impl<const MIN: irang, const MAX: irang> const
+impl<const MIN: irang, const MAX: irang>
     core::cmp::PartialEq<Ranged<MIN, MAX>> for irang
 where
     [(); memlayout(MIN, MAX).bytes()]: ,
@@ -257,7 +257,7 @@ where
     }
 }
 
-impl<const MIN: irang, const MAX: irang> const
+impl<const MIN: irang, const MAX: irang>
     core::cmp::PartialEq<irang> for Ranged<MIN, MAX>
 where
     [(); memlayout(MIN, MAX).bytes()]: ,
@@ -274,7 +274,7 @@ where
 }
 
 
-impl<const AMIN: irang, const AMAX: irang, const BMIN: irang, const BMAX: irang> const
+impl<const AMIN: irang, const AMAX: irang, const BMIN: irang, const BMAX: irang>
     core::cmp::PartialEq<Ranged<BMIN, BMAX>> for Ranged<AMIN, AMAX>
 where
     [(); memlayout(AMIN, AMAX).bytes()]: ,
@@ -298,7 +298,7 @@ AlignWrap<{memlayout(AMIN, AMAX)}>: Aligner,
 {}
 
 
-impl<const AMIN: irang, const AMAX: irang, const BMIN: irang, const BMAX: irang> const
+impl<const AMIN: irang, const AMAX: irang, const BMIN: irang, const BMAX: irang>
     core::cmp::PartialOrd<Ranged<BMIN, BMAX>> for Ranged<AMIN, AMAX> 
 where
     [(); memlayout(AMIN, AMAX).bytes()]: ,
@@ -328,7 +328,7 @@ where
         self.get() >= other.get()
     }
 }
-impl<const AMIN: irang, const AMAX: irang> const core::cmp::Ord for Ranged<AMIN, AMAX>
+impl<const AMIN: irang, const AMAX: irang> core::cmp::Ord for Ranged<AMIN, AMAX>
 where
     [(); memlayout(AMIN, AMAX).bytes()]: ,
     AlignWrap<{memlayout(AMIN, AMAX)}>: Aligner,
@@ -352,7 +352,7 @@ where
     }
 }
 
-impl<const AMIN: irang, const AMAX: irang> const
+impl<const AMIN: irang, const AMAX: irang>
     core::cmp::PartialOrd<irang> for Ranged<AMIN, AMAX> 
 where
     [(); memlayout(AMIN, AMAX).bytes()]: ,
@@ -381,7 +381,7 @@ where
 }
 
 #[allow(clippy::use_self)]  // False positive clippy lint
-impl<const AMIN: irang, const AMAX: irang> const
+impl<const AMIN: irang, const AMAX: irang>
     core::cmp::PartialOrd<Ranged<AMIN, AMAX>> for irang
 where
     [(); memlayout(AMIN, AMAX).bytes()]: ,

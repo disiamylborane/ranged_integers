@@ -1,7 +1,7 @@
 # Ranged integers [nightly only]
 
-**Note: the library causes ICEs on some Rust toolchains.**
-**The current version (0.8.0) was tested on nightly-2024-02-04.**
+**Note: the library relies on the incomplete Rust features. It causes ICEs on some Rust toolchains.**
+**The current version (0.9.0) was tested on nightly-2024-08-19.**
 
 [Documentation at docs.rs](https://docs.rs/ranged_integers)
 
@@ -13,7 +13,8 @@ Provides a generic type `Ranged<MIN, MAX>` representing an integer
 within a specified range. It automatically chooses the data size guided by
 the range specified (so `Ranged<-50, 50>` is of 1 byte while
 `Ranged<-20_000, 100_000>` is of 4 bytes) and supports the arithmetic operations
-with automatic bound recalculation and range iteration / fixed-size array indexing.
+with automatic bound recalculation and range iteration. The fixed sized arrays can be
+indexed with a ranged integer having the fitting bounds.
 
 The conversion and arithmetic functions catch the errors such as possible overflow
 and zero division at compile time.

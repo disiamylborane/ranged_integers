@@ -30,7 +30,7 @@ macro_rules! int_ranged_converters {
 
             $(
                 #[must_use] #[doc(hidden)] pub const fn $t (min: irang, max: irang)->OperationPossibility {
-                    OperationPossibility::allow_if(min>=core::$t::MIN as irang && max<=core::$t::MAX as irang)
+                    OperationPossibility::allow_if(min>=$t::MIN as irang && max<=$t::MAX as irang)
                 }
             )+
         }
@@ -44,13 +44,15 @@ macro_rules! int_ranged_converters {
                 pub const fn $t(self) -> $t
                 where Assert<{converter_checkers::$t(MIN, MAX)}>: IsAllowed
                 {
+                    #![allow(clippy::cast_possible_truncation)]
+                    #![allow(clippy::cast_sign_loss)]
                     self.get() as $t
                 }
             )+
         }
 
         $(
-            impl<const MIN: irang, const MAX: irang> const From<Ranged<MIN, MAX>> for $t
+            impl<const MIN: irang, const MAX: irang> From<Ranged<MIN, MAX>> for $t
             where
                 [u8; memlayout(MIN, MAX).bytes()]:,
                 AlignWrap<{memlayout(MIN, MAX)}>: Aligner,
@@ -60,8 +62,9 @@ macro_rules! int_ranged_converters {
             }
 
             impl AsRanged for $t {
-                type Res = Ranged<{core::$t::MIN as irang},{core::$t::MAX as irang}>;
+                type Res = Ranged<{$t::MIN as irang},{$t::MAX as irang}>;
                 fn as_ranged(self) -> Self::Res {
+                    #![allow(clippy::cast_lossless)]
                     unsafe {Self::Res::__unsafe_new(self as irang)}
                 }
             }
@@ -75,7 +78,7 @@ int_ranged_converters! {i8 u8 i16 u16 i32 u32 i64 u64 i128 isize usize}
 macro_rules! signed_ranged_rem {
     ($($t: ident)+) => {
         $(
-            impl<const VAL: irang> const core::ops::Rem<Ranged<VAL, VAL>> for $t
+            impl<const VAL: irang> core::ops::Rem<Ranged<VAL, VAL>> for $t
             where
                 [(); memlayout(VAL, VAL).bytes()]:,
                 [(); memlayout(1-VAL.abs(), VAL.abs()-1).bytes()]:,
@@ -86,6 +89,7 @@ macro_rules! signed_ranged_rem {
                 type Output = Ranged<{1-VAL.abs()}, {VAL.abs()-1}>;
 
                 fn rem(self, _rhs: Ranged<VAL, VAL>) -> Self::Output {
+                    #![allow(clippy::cast_lossless)]
                     unsafe { Ranged::__unsafe_new(self as irang % VAL) }
                 }
             }
@@ -97,7 +101,7 @@ signed_ranged_rem! {i8 i16 i32 i64 i128 isize}
 macro_rules! unsigned_ranged_rem {
     ($($t: ident)+) => {
         $(
-            impl<const VAL: irang> const core::ops::Rem<Ranged<VAL, VAL>> for $t
+            impl<const VAL: irang> core::ops::Rem<Ranged<VAL, VAL>> for $t
             where
                 [(); memlayout(VAL, VAL).bytes()]:,
                 [(); memlayout(0, VAL.abs()-1).bytes()]:,
@@ -107,6 +111,7 @@ macro_rules! unsigned_ranged_rem {
                 type Output = Ranged<0, {VAL.abs()-1}>;
 
                 fn rem(self, _rhs: Ranged<VAL, VAL>) -> Self::Output {
+                    #![allow(clippy::cast_lossless)]
                     unsafe { Ranged::__unsafe_new(self as irang % VAL) }
                 }
             }

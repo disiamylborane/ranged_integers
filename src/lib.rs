@@ -4,6 +4,13 @@
 //! automatic data size selection, automatic bounds calulation for arithmetics and the possibility
 //! of fixed-size array indexing and range iteration.
 //!
+//! # Version info
+//!
+//! In the version 0.9.0 the compile-time arithmetics were removed, because the compiler
+//! stopped supporting it. The version 0.9.0 was adapted for nightly-2024-08-19.
+//! Check out the [changelog](https://github.com/disiamylborane/ranged_integers/blob/master/CHANGELOG.md)
+//! for the list of features in the previous versions.
+//!
 //! # Prerequisites
 //!
 //! The library usage requires the following Rust features enabled in the user crate or application:
@@ -11,12 +18,9 @@
 //! ```
 //! // Without this rustc generates errors and sometimes panics.
 //! #![feature(adt_const_params, generic_const_exprs)]
-//!
-//! // This features are for the compile-time arithmetics.
-//! // Note that the crate sometimes causes ICEs with the feature(effects).
-//! #![feature(const_trait_impl)]
-//! #![feature(effects)]
 //! ```
+//! 
+//! Note that the features needed depend on the package version.
 //! 
 //! # Usage and examples
 //! 
@@ -403,7 +407,7 @@ type irang = i128;
 pub const fn memlayout(min: irang, max: irang) -> holder::IntLayout {
     macro_rules! layout_variants {
         ($($t:ident)+) => {
-            $(   if core::$t::MIN as irang <= min && max <= core::$t::MAX as irang {return holder::IntLayout::$t}   )+
+            $(   if $t::MIN as irang <= min && max <= $t::MAX as irang {return holder::IntLayout::$t}   )+
         }
     }
     if min == max {
@@ -591,7 +595,7 @@ pub const fn max_irang(x: irang, y: irang) -> irang {
 }
 
 #[allow(clippy::cast_sign_loss)]
-impl<T, const N: usize> const core::ops::Index<Ranged<0, {N as i128 - 1}>> for [T; N]
+impl<T, const N: usize> core::ops::Index<Ranged<0, {N as i128 - 1}>> for [T; N]
 where 
     [u8; memlayout(0, N as i128 - 1).bytes()]:,AlignWrap<{memlayout(0, N as i128 - 1)}>: Aligner,
     Assert<{conversions::converter_checkers::usize(0, N as i128 - 1)}>: IsAllowed
@@ -603,7 +607,7 @@ where
 }
 
 #[allow(clippy::cast_sign_loss)]
-impl<T, const N: usize> const core::ops::IndexMut<Ranged<0, {N as i128 - 1}>> for [T; N]
+impl<T, const N: usize> core::ops::IndexMut<Ranged<0, {N as i128 - 1}>> for [T; N]
 where 
     [u8; memlayout(0, N as i128 - 1).bytes()]:,AlignWrap<{memlayout(0, N as i128 - 1)}>: Aligner,
     Assert<{conversions::converter_checkers::usize(0, N as i128 - 1)}>: IsAllowed
@@ -614,7 +618,7 @@ where
 }
 
 #[allow(clippy::cast_sign_loss)]
-impl<T, const N: usize, const MIN: irang, const MAX: irang> const
+impl<T, const N: usize, const MIN: irang, const MAX: irang>
 core::ops::Index<iter::ConstRange<MIN, MAX>> for [T; N] 
 where
     [(); memlayout(MIN, MAX).bytes()]:,
@@ -631,7 +635,7 @@ where
     }
 }
 #[allow(clippy::cast_sign_loss)]
-impl<T, const N: usize, const MIN: irang, const MAX: irang> const
+impl<T, const N: usize, const MIN: irang, const MAX: irang>
 core::ops::IndexMut<iter::ConstRange<MIN, MAX>> for [T; N] 
 where
     [(); memlayout(MIN, MAX).bytes()]:,

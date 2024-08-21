@@ -129,140 +129,140 @@ fn print_val() {
     assert_val!([0 65535] 65535);
 
     let x = r!(42);
-    assert_eq!(format!("{}", x), "42");
-    assert_eq!(format!("{:?}", x), "r!(42)");
+    assert_eq!(format!("{x}"), "42");
+    assert_eq!(format!("{x:?}"), "r!(42)");
 
     let x = r!(400_000);
-    assert_eq!(format!("{}", x), "400000");
+    assert_eq!(format!("{x}"), "400000");
 
     let x = r!(4000);
-    assert_eq!(format!("{}", x), "4000");
+    assert_eq!(format!("{x}"), "4000");
 
     let x = r!(40);
-    assert_eq!(format!("{}", x), "40");
+    assert_eq!(format!("{x}"), "40");
 
     let x = r!(0);
-    assert_eq!(format!("{}", x), "0");
+    assert_eq!(format!("{x}"), "0");
 
     let x = r!(-400_000);
-    assert_eq!(format!("{}", x), "-400000");
+    assert_eq!(format!("{x}"), "-400000");
 
     let x = r!(-4000);
-    assert_eq!(format!("{}", x), "-4000");
+    assert_eq!(format!("{x}"), "-4000");
 
     let x = r!(-40);
-    assert_eq!(format!("{}", x), "-40");
+    assert_eq!(format!("{x}"), "-40");
 }
 
 #[test]
 fn ranged_macro() {
     let x = r! {[0 4] 2};
-    assert_eq!(format!("{}", x), "2");
-    assert_eq!(format!("{:?}", x), "r!([0 4] 2)");
+    assert_eq!(format!("{x}"), "2");
+    assert_eq!(format!("{x:?}"), "r!([0 4] 2)");
 
     let x: Ranged<2, 15> = r!([] 10);
-    assert_eq!(format!("{}", x), "10");
-    assert_eq!(format!("{:?}", x), "r!([2 15] 10)");
+    assert_eq!(format!("{x}"), "10");
+    assert_eq!(format!("{x:?}"), "r!([2 15] 10)");
 
     let x = r!(10);
-    assert_eq!(format!("{}", x), "10");
-    assert_eq!(format!("{:?}", x), "r!(10)");
+    assert_eq!(format!("{x}"), "10");
+    assert_eq!(format!("{x:?}"), "r!(10)");
 }
 
 #[test]
 fn addsub() {
     let a = r!(20) + r!(22);
-    assert_eq!(format!("{}", a), "42");
-    assert_eq!(format!("{:?}", a), "r!(42)");
+    assert_eq!(format!("{a}"), "42");
+    assert_eq!(format!("{a:?}"), "r!(42)");
 
     let a = r!(20).add(r!(22));
-    assert_eq!(format!("{}", a), "42");
-    assert_eq!(format!("{:?}", a), "r!(42)");
+    assert_eq!(format!("{a}"), "42");
+    assert_eq!(format!("{a:?}"), "r!(42)");
 
     let a = 15_u32 % r!(20);
     let b = a + a;
-    assert_eq!(format!("{}", b), "30");
-    assert_eq!(format!("{:?}", b), "r!([0 38] 30)");
+    assert_eq!(format!("{b}"), "30");
+    assert_eq!(format!("{b:?}"), "r!([0 38] 30)");
 
     let c = r!(22) - r!(20);
-    assert_eq!(format!("{}", c), "2");
-    assert_eq!(format!("{:?}", c), "r!(2)");
+    assert_eq!(format!("{c}"), "2");
+    assert_eq!(format!("{c:?}"), "r!(2)");
 
     let c = r!(22).sub(r!(20));
-    assert_eq!(format!("{}", c), "2");
-    assert_eq!(format!("{:?}", c), "r!(2)");
+    assert_eq!(format!("{c}"), "2");
+    assert_eq!(format!("{c:?}"), "r!(2)");
 }
 
 #[test]
 fn mul() {
     let a = r!(20) * r!(20);
-    assert_eq!(format!("{}", a), "400");
-    assert_eq!(format!("{:?}", a), "r!(400)");
+    assert_eq!(format!("{a}"), "400");
+    assert_eq!(format!("{a:?}"), "r!(400)");
 
     let b = r! {[-3 3] 1} * r! {[-3 3] 2};
-    assert_eq!(format!("{}", b), "2");
-    assert_eq!(format!("{:?}", b), "r!([-9 9] 2)");
+    assert_eq!(format!("{b}"), "2");
+    assert_eq!(format!("{b:?}"), "r!([-9 9] 2)");
 
     let c = Ranged::<{ -3 }, 0>::new(-1).unwrap() * Ranged::<0, 3>::new(2).unwrap();
-    assert_eq!(format!("{}", c), "-2");
-    assert_eq!(format!("{:?}", c), "r!([-9 0] -2)");
+    assert_eq!(format!("{c}"), "-2");
+    assert_eq!(format!("{c:?}"), "r!([-9 0] -2)");
 
     let b = r! {[-30000 30000] 1} * r! {[-3 3] 2};
-    assert_eq!(format!("{}", b), "2");
-    assert_eq!(format!("{:?}", b), "r!([-90000 90000] 2)");
+    assert_eq!(format!("{b}"), "2");
+    assert_eq!(format!("{b:?}"), "r!([-90000 90000] 2)");
 
     let a = r!(20).mul(r!(20));
-    assert_eq!(format!("{}", a), "400");
-    assert_eq!(format!("{:?}", a), "r!(400)");
+    assert_eq!(format!("{a}"), "400");
+    assert_eq!(format!("{a:?}"), "r!(400)");
 
     let b = r! {[-3 3] 1}.mul(r! {[-3 3] 2});
-    assert_eq!(format!("{}", b), "2");
-    assert_eq!(format!("{:?}", b), "r!([-9 9] 2)");
+    assert_eq!(format!("{b}"), "2");
+    assert_eq!(format!("{b:?}"), "r!([-9 9] 2)");
 
     let c = Ranged::<{ -3 }, 0>::new(-1)
         .unwrap()
         .mul(Ranged::<0, 3>::new(2).unwrap());
-    assert_eq!(format!("{}", c), "-2");
-    assert_eq!(format!("{:?}", c), "r!([-9 0] -2)");
+    assert_eq!(format!("{c}"), "-2");
+    assert_eq!(format!("{c:?}"), "r!([-9 0] -2)");
 
     let b = r! {[-30000 30000] 1}.mul(r! {[-3 3] 2});
-    assert_eq!(format!("{}", b), "2");
-    assert_eq!(format!("{:?}", b), "r!([-90000 90000] 2)");
+    assert_eq!(format!("{b}"), "2");
+    assert_eq!(format!("{b:?}"), "r!([-90000 90000] 2)");
 }
 
 #[test]
 fn div() {
     let a = r!(20) / r!(20);
-    assert_eq!(format!("{}", a), "1");
-    assert_eq!(format!("{:?}", a), "r!(1)");
+    assert_eq!(format!("{a}"), "1");
+    assert_eq!(format!("{a:?}"), "r!(1)");
 
     let a = r!(20).div(r!(20));
-    assert_eq!(format!("{}", a), "1");
-    assert_eq!(format!("{:?}", a), "r!(1)");
+    assert_eq!(format!("{a}"), "1");
+    assert_eq!(format!("{a:?}"), "r!(1)");
 
     let a = r!([0 100] 20) / r!([1 10] 5);
-    assert_eq!(format!("{}", a), "4");
-    assert_eq!(format!("{:?}", a), "r!([0 100] 4)");
+    assert_eq!(format!("{a}"), "4");
+    assert_eq!(format!("{a:?}"), "r!([0 100] 4)");
 
     let a = r!([0 100] 20) / r![[-10 -1] - 5];
-    assert_eq!(format!("{}", a), "-4");
-    assert_eq!(format!("{:?}", a), "r!([-100 0] -4)");
+    assert_eq!(format!("{a}"), "-4");
+    assert_eq!(format!("{a:?}"), "r!([-100 0] -4)");
 
     let a = r!([-100 0] -20).div_euclid(r![[-10 - 1] - 5]);
-    assert_eq!(format!("{}", a), "4");
-    assert_eq!(format!("{:?}", a), "r!([0 100] 4)");
+    assert_eq!(format!("{a}"), "4");
+    assert_eq!(format!("{a:?}"), "r!([0 100] 4)");
 
     let a = r!([-100 0] -20) / r!([1 10] 5);
-    assert_eq!(format!("{}", a), "-4");
-    assert_eq!(format!("{:?}", a), "r!([-100 0] -4)");
+    assert_eq!(format!("{a}"), "-4");
+    assert_eq!(format!("{a:?}"), "r!([-100 0] -4)");
 
     let a = r!([100 1000] 500) / r!([1 6] 5);
-    assert_eq!(format!("{}", a), "100");
-    assert_eq!(format!("{:?}", a), "r!([16 1000] 100)");
+    assert_eq!(format!("{a}"), "100");
+    assert_eq!(format!("{a:?}"), "r!([16 1000] 100)");
 
     let a = r!([100 1000] 500) / r![[-6 - 1] - 5];
-    assert_eq!(format!("{}", a), "-100");
-    assert_eq!(format!("{:?}", a), "r!([-1000 -16] -100)");
+    assert_eq!(format!("{a}"), "-100");
+    assert_eq!(format!("{a:?}"), "r!([-1000 -16] -100)");
 
     let _: Ranged<0, 50> = r!([0 101] 17) / r![[2 10] 5];
     let _: Ranged<0, 50> = r!([0 101] 17).div_euclid(r![[2 10] 5]);
@@ -524,7 +524,7 @@ fn iter() {
 
     let mut s = String::new();
     for r in crate::ConstInclusiveRange::<0, 9> {
-        write!(&mut s, "{} ", r).unwrap();
+        write!(&mut s, "{r} ").unwrap();
     }
     assert_eq!(s, "0 1 2 3 4 5 6 7 8 9 ");
 
