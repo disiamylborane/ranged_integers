@@ -2,8 +2,8 @@
 
 ## 0.9.0
 
-Works on nightly-2024-08-19.
-- **Removed** const arithmetics to be supported by the current version of Rust (nightly-2024-02-04).
+Works on nightly-2024-10-12.
+- **Removed** const arithmetics to be supported by the current version of Rust (nightly-2024-10-12).
 
 ## 0.8.0
 
