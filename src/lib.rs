@@ -7,7 +7,7 @@
 //! # Version info
 //!
 //! In the version 0.9.0 the compile-time arithmetics were removed, because the compiler
-//! stopped supporting it. The version 0.9.0 was adapted for nightly-2024-08-19.
+//! stopped supporting it. The version 0.9.0 was adapted for nightly-2024-10-12.
 //! Check out the [changelog](https://github.com/disiamylborane/ranged_integers/blob/master/CHANGELOG.md)
 //! for the list of features in the previous versions.
 //!
@@ -372,14 +372,10 @@
 #![feature(generic_const_exprs)]
 
 #![feature(const_trait_impl)]
-#![feature(const_refs_to_cell)]
 
 #![deny(missing_docs)]
 #![deny(clippy::nursery)]
 #![warn(clippy::pedantic)]
-
-#![feature(const_slice_index)]
-#![feature(const_mut_refs)]
 
 #[cfg(test)]
 #[macro_use]

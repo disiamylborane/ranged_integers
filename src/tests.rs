@@ -603,12 +603,11 @@ fn test_rmatch() {
     assert_eq!(all_digits, "Zero One Two Three Four Five Six Seven Eight Nine");
 }
 
-/*
+
 #[test]
 fn type_constraining_comparisons() {
     {
-
-        let ttx = r!([10 50] 30).fit_less_than(r!([10 45] 40));
+        let _fit = r!([10 50] 30).fit_less_than(r!([10 45] 40));
 
         let a: Ranged<20, 100> = r!([] 30);
         let b: Ranged<10, 50> = r!([] 40);
@@ -636,4 +635,3 @@ fn type_constraining_comparisons() {
         assert_eq!(r!([10 50] 39).fit_less_than( r!([15 45] 40) ), Some(r!([] 39)));
     }
 }
-*/
