@@ -1,13 +1,11 @@
-
-use crate::holder::{AlignWrap, Aligner};
-
+use crate::{allow_range, value_check::allow_if};
 use super::{Assert, IsAllowed, OperationPossibility, Ranged, irang, memlayout};
 
 use core::convert::TryFrom;
 
 /// An iterator through given range
 pub struct Iter<const MIN: irang, const MAX: irang> 
-where [u8; memlayout(MIN, MAX).bytes()]:,AlignWrap<{memlayout(MIN, MAX)}>: Aligner,
+where Assert<{allow_range(memlayout(MIN, MAX))}>: IsAllowed,
 {
     pub(crate) current: Option<Ranged<MIN, MAX>>
 }
@@ -32,21 +30,21 @@ where [u8; memlayout(MIN, MAX).bytes()]:,AlignWrap<{memlayout(MIN, MAX)}>: Align
 ///
 /// ```
 #[derive(Clone, Copy)]
-pub struct ConstRange<const MIN: irang, const MAX: irang>
-where [(); memlayout(MIN, MAX).bytes()]:, AlignWrap<{memlayout(MIN, MAX)}>: Aligner, ;
+pub struct ConstInclusiveRange<const MIN: irang, const MAX: irang>
+where Assert<{allow_range(memlayout(MIN, MAX))}>: IsAllowed, ;
 
-impl<const MIN: irang, const MAX: irang> IntoIterator for ConstRange<MIN, MAX>
-where [(); memlayout(MIN, MAX).bytes()]:, AlignWrap<{memlayout(MIN, MAX)}>: Aligner,
+impl<const MIN: irang, const MAX: irang> IntoIterator for ConstInclusiveRange<MIN, MAX>
+where Assert<{allow_range(memlayout(MIN, MAX))}>: IsAllowed,
 {
     type Item = Ranged<MIN, MAX>;
     type IntoIter = Iter<MIN, MAX>;
     fn into_iter(self) -> Self::IntoIter {
-        Self::IntoIter{current: Some(unsafe{Ranged::__unsafe_new(MIN)})}
+        Self::IntoIter{current: Some(unsafe{Ranged::unchecked_new(MIN)})}
     }
 }
 
 impl<const MIN: irang, const MAX: irang> Iterator for Iter<MIN, MAX>
-where [u8; memlayout(MIN, MAX).bytes()]:, AlignWrap<{memlayout(MIN, MAX)}>: Aligner,
+where Assert<{allow_range(memlayout(MIN, MAX))}>: IsAllowed,
 {
     type Item = Ranged<MIN, MAX>;
 
@@ -54,7 +52,7 @@ where [u8; memlayout(MIN, MAX).bytes()]:, AlignWrap<{memlayout(MIN, MAX)}>: Alig
         unsafe{
             let curr = self.current?;
             let cval = curr.get();
-            self.current = if cval == MAX {None} else {Ranged::__unsafe_new(cval+1).into()};
+            self.current = if cval == MAX {None} else {Ranged::unchecked_new(cval+1).into()};
             Some(curr)
         }
     }
@@ -78,7 +76,7 @@ where [u8; memlayout(MIN, MAX).bytes()]:, AlignWrap<{memlayout(MIN, MAX)}>: Alig
 
     fn last(self) -> Option<Self::Item> {
         self.current?;
-        Some(unsafe{Ranged::__unsafe_new(MAX)})
+        Some(unsafe{Ranged::unchecked_new(MAX)})
     }
 
     fn min(mut self) -> Option<Self::Item> {
@@ -92,13 +90,12 @@ where [u8; memlayout(MIN, MAX).bytes()]:, AlignWrap<{memlayout(MIN, MAX)}>: Alig
 
 #[doc(hidden)]
 pub const fn range_fits_usize(min: irang, max: irang) -> OperationPossibility {
-    OperationPossibility::allow_if((max-min) < (usize::MAX as i128))
+    allow_if((max-min) < (usize::MAX as i128))
 }
 
 impl<const MIN: irang, const MAX: irang> ExactSizeIterator for Iter<MIN, MAX>
 where
-    [u8; memlayout(MIN, MAX).bytes()]:,
-    AlignWrap<{memlayout(MIN, MAX)}>: Aligner,
+    Assert<{allow_range(memlayout(MIN, MAX))}>: IsAllowed,
     Assert<{range_fits_usize(MAX, MIN)}>: IsAllowed,
 {}
 

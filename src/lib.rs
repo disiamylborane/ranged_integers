@@ -1,15 +1,32 @@
 //! # Ranged integers [nightly only]
 //!
 //! The crate provides [an integer type](struct.Ranged.html) restricted to a compile time defined range with
-//! automatic data size selection, automatic bounds calulation for arithmetics and the possibility
+//! automatic data size selection, automatic bounds calculation for arithmetics and the possibility
 //! of fixed-size array indexing and range iteration.
-//!
+//! 
+//! The library relies to the unstable const generics-related features.
+//! It causes ICEs on some Rust toolchains and may once stop working. 
+//! It will require nightly Rust until the `generic-const-exprs` feature is stabilized.
+//! Consider the other stable ranged integers crates, allowing to ensure the bounds and
+//! perform the arithmetic operations withing the type:
+//! - [deranged](https://crates.io/crates/deranged). It provides checked/saturating and unsafe
+//!   unchecked arithmetics within the specified bounds, equalities and comparisons. There is a
+//!   procedural macro to select a type of ranged based on literal bounds.
+//! - [light_ranged_integers](https://crates.io/crates/light-ranged-integers) provides
+//!   a nice way to choose the type of arithmetic operation (wrapping/saturating/panicking)
+//!   with the type-level mark.
+//! 
 //! # Version info
+//! 
+//! The version 0.10.0 was built for nightly-2025-06-19 toolchain.
 //!
-//! In the version 0.9.0 the compile-time arithmetics were removed, because the compiler
-//! stopped supporting it. The version 0.9.0 was adapted for nightly-2024-10-12.
-//! Check out the [changelog](https://github.com/disiamylborane/ranged_integers/blob/master/CHANGELOG.md)
-//! for the list of features in the previous versions.
+//! The const arithmetics were added. The const fn-s are used for compile-time arithmetics, since
+//! the `std::opts` traits are mostly non-const. The `i128` representation was removed from Ranged.
+//! This has been done because the bounds violation generates an unpleasant error in which the
+//! place of occurrence is not specified, only the violated line inside `ranged_integers` crate. So,
+//! the possibility to violate the `i128` bounds during the automatic bounds calculation is eliminated.
+//! The bounds of i64/u64 are explicitly written as a trait constraint, so it generates a
+//! much more helpful error message.
 //!
 //! # Prerequisites
 //!
@@ -29,8 +46,8 @@
 //! Use `Ranged<MIN, MAX>` type to be sure of the value range:
 //!
 //! ```
-//! # use ranged_integers::*;
-//! fn move_player(dice_roll: Ranged<1, 6>) {
+//! # #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
+//! fn move_player(dice_roll: Ranged<1, 6>) {  // Ranged<1, 6> is automatically of 1 byte
 //!     let x : i32 = dice_roll.into(); // Conversion is allowed, i32 can store 1..=6
 //! }
 //! ```
@@ -50,13 +67,12 @@
 //! 
 //! ## Data layout paradigm
 //!
-//! The [Ranged] automatically chooses the smallest size possible according
-//! to `MIN..=MAX` range.
-//! It supports i8, u8, i16, u16, i32, u32, i64, u64 and i128 layouts (u128 is not supported),
+//! The [Ranged] automatically chooses the smallest size possible according to `MIN..=MAX` range.
+//! It supports i8, u8, i16, u16, i32, u32, i64 and u64 layouts (i128 and u128 are not supported),
 //! and a special zero-size layout for "constant" values with `MIN==MAX`.
 //!
 //! ```
-//! # use ranged_integers::*; fn main(){
+//! # #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*; fn main(){
 //! use core::mem::size_of;
 //! assert_eq!(size_of::< Ranged<42, 42> >(), 0); // It's always 42, no need to store it
 //! 
@@ -99,7 +115,7 @@
 //!
 //! ```compile_fail
 //! # #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
-//! move_player(r!([] 7)); // Error: Can't store 7 in [1 6] inverval
+//! move_player(r!([] 7)); // Error: Can't store 7 in [1 6] interval
 //! ```
 //! ```compile_fail
 //! move_player(r!([1 7] 7)); // Error: type mismatch, move_player() requires Ranged<1, 6>
@@ -111,7 +127,7 @@
 //! [`expand()`](struct.Ranged.html#method.expand) generic method (compile-time check)
 //! and the methods [`fit()`](struct.Ranged.html#method.fit), [`fit_min()`](struct.Ranged.html#method.fit_min),
 //! [`fit_max()`](struct.Ranged.html#method.fit_max) for runtime check. The `Ranged` values may be compared
-//! to each other yielding the shrinked bounds using 
+//! to each other yielding the shrunk bounds using 
 //! [`fit_less_than()`](struct.Ranged.html#method.fit_less_than),
 //! [`fit_less_eq()`](struct.Ranged.html#method.fit_less_eq),
 //! [`fit_greater_than()`](struct.Ranged.html#method.fit_greater_than), and 
@@ -263,10 +279,11 @@
 //! The bounds of arithmetic operations results are automatically recalculated.
 //!
 //! Currently supported:
-//! * The basic arithmetic operations (+, -, *, /)
-//! * [`div_euclid()`](struct.Ranged.html#method.div_euclid) and [`rem_euclid()`](struct.Ranged.html#method.rem_euclid)
-//! * [`min()`](struct.Ranged.html#method.min) and [`max()`](struct.Ranged.html#method.max)
-//! * [`abs()`](struct.Ranged.html#method.abs)
+//! * The basic arithmetic operations (+, -, *, /), not available in const context
+//! * The const arithmetic functions ([`add`](Ranged::add), [`sub`](Ranged::sub), [`mul`](Ranged::mul), [`div`](Ranged::div))
+//! * [`div_euclid`](Ranged::div_euclid) and [`rem_euclid`](Ranged::div_euclid)
+//! * [`min`](Ranged::min) and [`max`](Ranged::max)
+//! * [`abs`](Ranged::abs) and [`neg`](Ranged::neg)
 //!
 //! ```
 //! # #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
@@ -300,6 +317,7 @@
 //! let min: Ranged<1,6> = x.min(a);
 //! let max: Ranged<2,12> = x.max(a);
 //! let abs: Ranged<0,6> = r!([-1 6] -1).abs();
+//! let neg: Ranged<-6,1> = r!([-1 6] -1).neg();
 //! ```
 //!
 //! The division and remainder are allowed only if it's impossible to store "0" in the divisor:
@@ -341,7 +359,7 @@
 //! let x: Ranged<-9, 9> = (r!([-1000 1000] 500) % r!([-10 -1] -7));
 //! 
 //! // If the dividend is nonnegative or nonpositive,
-//! // the output range is limited to 0.
+//! // the output range is limited to 0 from one side.
 //! let x: Ranged<0, 9> = r!([0 100] 15) % r!(10);
 //! let x: Ranged<-9, 0> = r!([-100 0] -15) % r!(10);
 //!
@@ -368,83 +386,69 @@
 #![no_std]
 #![allow(incomplete_features)]
 
-#![feature(adt_const_params)]
-#![feature(generic_const_exprs)]
-
-#![feature(const_trait_impl)]
+#![feature(generic_const_exprs)]  // The whole idea is based on this
+#![feature(adt_const_params)]  // This is mostly for OperationPossibility
+#![feature(specialization)]  // It allows to decrease a number of constraints in Ranged
+#![feature(freeze)]  // If it is enabled in user crate, the Ranged should implement Freeze trait
 
 #![deny(missing_docs)]
 #![deny(clippy::nursery)]
 #![warn(clippy::pedantic)]
 
-#[cfg(test)]
-#[macro_use]
-extern crate std;
 
-#[cfg(test)]
-mod tests;
-
-#[doc(hidden)]
-pub mod value_check;
-use holder::{AlignWrap, Aligner};
-use value_check::{Assert, IsAllowed, OperationPossibility};
-
-mod holder;
-
-// An alias integer representing the largest possible ranged integer
+// An alias integer representing the public interface of Ranged constants. Introduced
+// to easily change when necessary.
 #[allow(non_camel_case_types)]
 type irang = i128;
 
-/// Pick out the "smallest" IntLayout that fits the min..=max range.
-/// To be evaluated at compile time.
-/// Panics to emit an error when min>max.
-#[must_use]
-#[doc(hidden)]
-pub const fn memlayout(min: irang, max: irang) -> holder::IntLayout {
-    macro_rules! layout_variants {
-        ($($t:ident)+) => {
-            $(   if $t::MIN as irang <= min && max <= $t::MAX as irang {return holder::IntLayout::$t}   )+
-        }
-    }
-    if min == max {
-        return holder::IntLayout::Trivial;
-    }
-    assert!(min <= max, "Ranged error: MIN cannot be greater than MAX");
-    layout_variants! {i8 u8 i16 u16 i32 u32 i64 u64}
-    holder::IntLayout::i128
-}
+
+#[cfg(test)] #[macro_use] extern crate std;
+#[cfg(test)] mod tests;
+
+pub mod value_check;  // Compile-time infrastructure for Ranged
+
+mod holder;  // Internal representation of ranged
+mod conversions;  // Conversions to/from Ranged
+mod arithmetics;  // Arithmetic operations
+mod iter;  // Iterating over a constant range
+mod arrays;  // Implementing Ranged-related logics for arrays indexing and slicing
+
+pub use conversions::AsRanged;
+pub use iter::ConstInclusiveRange;
+
+use value_check::{Assert, IsAllowed, OperationPossibility, memlayout, allow_range, allow_if, allow_creation};
 
 /// A value restricted to the given bounds
 #[repr(transparent)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Hash)]
 pub struct Ranged<const MIN: irang, const MAX: irang>
-where [u8; memlayout(MIN, MAX).bytes()]:,AlignWrap<{memlayout(MIN, MAX)}>: Aligner,
+where
+    // This restriction kills two birds with one stone: first, it forbids to
+    // work with the Ranged beyond u64 or i64 layout, second, it bounds the
+    // memlayout(MIN, MAX) constant, so it can be used in the inner type. All
+    // the generic calls to Ranged<...> have to satisfy this constraint.
+    Assert<{allow_range(memlayout(MIN, MAX))}>: IsAllowed,
 {
     v: holder::RangedRepr<{ memlayout(MIN, MAX) }>,
 }
 
-#[must_use]
-#[doc(hidden)]
-pub const fn allow_creation(min: irang, v: irang, max: irang) -> bool {
-    min <= v && v <= max
-}
 
 impl<const MIN: irang, const MAX: irang> Ranged<MIN, MAX>
 where
-    [u8; memlayout(MIN, MAX).bytes()]: ,AlignWrap<{memlayout(MIN, MAX)}>: Aligner,
+    Assert<{allow_range(memlayout(MIN, MAX))}>: IsAllowed,
 {
     #[allow(clippy::inline_always)] #[must_use] #[inline(always)]
-    const unsafe fn __unsafe_new(n: irang) -> Self {
+    const unsafe fn unchecked_new(n: irang) -> Self {
         Self {
             v: holder::RangedRepr::from_irang(n),
         }
     }
 
+    // Convert Ranged to a primitive
     #[allow(clippy::inline_always)] #[must_use] #[inline(always)]
-    /// Convert Ranged to a primitive
     const fn get(self) -> irang {
         if MIN == MAX {MIN}
-        else {self.v.to_irang()}
+        else {self.v.to_irang(const{MIN>=0})}
     }
 
     /// Create a Ranged value checking the bounds at runtime
@@ -470,12 +474,17 @@ where
     #[must_use]
     pub const fn new(n: irang) -> Option<Self> {
         if (MIN <= n) && (n <= MAX) {
-            Some(unsafe { Self::__unsafe_new(n) })
+            Some(unsafe { Self::unchecked_new(n) })
         } else {
             None
         }
     }
+}
 
+impl<const MIN: irang, const MAX: irang> Ranged<MIN, MAX>
+where
+    Assert<{allow_range(memlayout(MIN, MAX))}>: IsAllowed,
+{
     /// Create a Ranged constant checking the bounds at compile time
     /// 
     /// Consider using [`r!`] macro instead
@@ -489,9 +498,9 @@ where
     /// ```
     #[must_use]
     pub const fn create_const<const V: irang>() -> Self
-    where Assert<{ OperationPossibility::allow_if(allow_creation(MIN, V, MAX)) }>: IsAllowed,
+    where Assert<{ allow_creation(MIN, V, MAX) }>: IsAllowed,
     {
-        unsafe { Self::__unsafe_new(V) }
+        unsafe { Self::unchecked_new(V) }
     }
 
     /// Iterate up from current value to `Self::MAX` (inclusively) using `Self` as output
@@ -500,13 +509,6 @@ where
         iter::Iter::<MIN,MAX>{current: Some(self)}
     }
 }
-
-mod conversions;
-pub use conversions::AsRanged;
-mod arithmetics;
-mod iter;
-pub use iter::ConstRange as ConstInclusiveRange;
-
 
 /// Create a ranged value or a range at compile time
 ///
@@ -562,7 +564,7 @@ macro_rules! r {
 }
 
 impl<const MIN: irang, const MAX: irang> core::fmt::Display for Ranged<MIN, MAX>
-where [(); memlayout(MIN, MAX).bytes()]: ,AlignWrap<{memlayout(MIN, MAX)}>: Aligner,
+where Assert<{allow_range(memlayout(MIN, MAX))}>: IsAllowed,
 {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.get())
@@ -570,7 +572,7 @@ where [(); memlayout(MIN, MAX).bytes()]: ,AlignWrap<{memlayout(MIN, MAX)}>: Alig
 }
 
 impl<const MIN: irang, const MAX: irang> core::fmt::Debug for Ranged<MIN, MAX>
-where [(); memlayout(MIN, MAX).bytes()]: ,AlignWrap<{memlayout(MIN, MAX)}>: Aligner,
+where Assert<{allow_range(memlayout(MIN, MAX))}>: IsAllowed,
 {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         if MIN == MAX {
@@ -581,71 +583,6 @@ where [(); memlayout(MIN, MAX).bytes()]: ,AlignWrap<{memlayout(MIN, MAX)}>: Alig
     }
 }
 
-#[doc(hidden)] #[must_use]
-pub const fn min_irang(x: irang, y: irang) -> irang {
-    if x < y {x} else {y}
-}
-#[doc(hidden)] #[must_use]
-pub const fn max_irang(x: irang, y: irang) -> irang {
-    if x > y {x} else {y}
-}
-
-#[allow(clippy::cast_sign_loss)]
-impl<T, const N: usize> core::ops::Index<Ranged<0, {N as i128 - 1}>> for [T; N]
-where 
-    [u8; memlayout(0, N as i128 - 1).bytes()]:,AlignWrap<{memlayout(0, N as i128 - 1)}>: Aligner,
-    Assert<{conversions::converter_checkers::usize(0, N as i128 - 1)}>: IsAllowed
-{
-    type Output = T;
-    fn index(&self, index: Ranged<0, {N as i128 - 1}>) -> &Self::Output {
-        unsafe{self.get_unchecked(index.usize())}
-    }
-}
-
-#[allow(clippy::cast_sign_loss)]
-impl<T, const N: usize> core::ops::IndexMut<Ranged<0, {N as i128 - 1}>> for [T; N]
-where 
-    [u8; memlayout(0, N as i128 - 1).bytes()]:,AlignWrap<{memlayout(0, N as i128 - 1)}>: Aligner,
-    Assert<{conversions::converter_checkers::usize(0, N as i128 - 1)}>: IsAllowed
-{
-    fn index_mut(&mut self, index: Ranged<0, {N as i128 - 1}>) -> &mut Self::Output {
-        unsafe{self.get_unchecked_mut(index.usize())}
-    }
-}
-
-#[allow(clippy::cast_sign_loss)]
-impl<T, const N: usize, const MIN: irang, const MAX: irang>
-core::ops::Index<iter::ConstRange<MIN, MAX>> for [T; N] 
-where
-    [(); memlayout(MIN, MAX).bytes()]:,
-    AlignWrap<{memlayout(MIN, MAX)}>: Aligner,
-    [T; (MAX-MIN+1) as usize]:,
-    Assert<{conversions::converter_checkers::usize(MIN, MAX)}>: IsAllowed
-{
-    type Output = [T; (MAX-MIN+1) as usize];
-    fn index(&self, _index: iter::ConstRange<MIN, MAX>) -> &Self::Output {
-        unsafe{
-            let ptr = self.get_unchecked((MIN as usize)..=(MAX as usize)).as_ptr().cast();
-            &*ptr
-        }
-    }
-}
-#[allow(clippy::cast_sign_loss)]
-impl<T, const N: usize, const MIN: irang, const MAX: irang>
-core::ops::IndexMut<iter::ConstRange<MIN, MAX>> for [T; N] 
-where
-    [(); memlayout(MIN, MAX).bytes()]:,
-    AlignWrap<{memlayout(MIN, MAX)}>: Aligner,
-    [T; (MAX-MIN+1) as usize]:,
-    Assert<{conversions::converter_checkers::usize(MIN, MAX)}>: IsAllowed
-{
-    fn index_mut(&mut self, _index: iter::ConstRange<MIN, MAX>) -> &mut Self::Output {
-        unsafe{
-            let ptr = self.get_unchecked_mut((MIN as usize)..=(MAX as usize)).as_mut_ptr().cast();
-            &mut *ptr
-        }
-    }
-}
 
 /// Ranged pattern matching macro
 /// 
@@ -657,7 +594,7 @@ where
 /// - The unclear error reporting
 /// 
 /// ```
-/// # #![feature(adt_const_params)] use ranged_integers::*;
+/// # #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
 /// fn ranged_to_bool(r: Ranged<0,1>) -> bool {
 ///     rmatch!{[0 1] r  // Bounds and expression (token tree, 
 ///                      // complex expressions must be in parentheses)
@@ -691,94 +628,97 @@ macro_rules! rmatch {
 }
 
 
+// Failtests: the tests that should fail or generate an error.
+
+
 #[allow(dead_code)]
 #[doc(hidden)]
 /**
 ```
-# #![feature(adt_const_params)] use ranged_integers::*;
+# #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
 u8::from(r!(0));
 ```
 
 ```compile_fail
-# #![feature(adt_const_params)] use ranged_integers::*;
+# #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
 u8::from(r!(-1));
 ```
 
 ```
-# #![feature(adt_const_params)] use ranged_integers::*;
+# #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
 u8::from(r!(255));
 ```
 
 ```compile_fail
-# #![feature(adt_const_params)] use ranged_integers::*;
+# #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
 u8::from(r!(256));
 ```
 
 ```
-# #![feature(adt_const_params)] use ranged_integers::*;
+# #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
 i8::from(r!(-128));
 ```
 
 
 ```compile_fail
-# #![feature(adt_const_params)] use ranged_integers::*;
+# #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
 i8::from(r!(-129));
 ```
 
 ```
-# #![feature(adt_const_params)] use ranged_integers::*;
+# #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
 i8::from(r!(127));
 ```
 
 
 ```compile_fail
-# #![feature(adt_const_params)] use ranged_integers::*;
+# #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
 i8::from(r!(128));
 ```
 
 
 ```
-# #![feature(adt_const_params)] #![feature(generic_const_exprs)]
+# #![feature(adt_const_params, generic_const_exprs)]
 # #[macro_use] extern crate ranged_integers; use ranged_integers::*;
 let a = r![[100 1000] 500] / r![[1 6] 5];
 ```
 ```compile_fail
-# #![feature(adt_const_params)] #![feature(generic_const_exprs)]
+# #![feature(adt_const_params, generic_const_exprs)]
 # #[macro_use] extern crate ranged_integers; use ranged_integers::*;
 let a = r![[100 1000] 500] / r![[0 6] 5];
 ```
 ```compile_fail
-# #![feature(adt_const_params)] #![feature(generic_const_exprs)]
+# #![feature(adt_const_params, generic_const_exprs)]
 # #[macro_use] extern crate ranged_integers; use ranged_integers::*;
 let a = r![[100 1000] 500] / r![[-1 6] 5];
 ```
 
 ```
-# #![feature(adt_const_params)] use ranged_integers::*;
+# #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
 Ranged::<0,1>::new(1);
 ```
 
 
 ```compile_fail
-# #![feature(adt_const_params)] use ranged_integers::*;
+# #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
 Ranged::<1,0>::new(1);
 ```
 
 
 ```
-# #![feature(adt_const_params)] use ranged_integers::*;
+# #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
 let x: Ranged::<0,1> = Ranged::<0,1>::new(1).unwrap();
 ```
 
 
 ```
-# #![feature(adt_const_params)] use ranged_integers::*;
+# #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
 let x: Ranged::<0,1> = Ranged::<0,1>::new(1).unwrap();
 ```
 
 
 ```
-# #![feature(adt_const_params)] use ranged_integers::*;
+# #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
 let a = r!([-10 10] 0);
 rmatch!{[-10 10] a
     _ => {()}
@@ -786,7 +726,7 @@ rmatch!{[-10 10] a
 ```
 
 ```compile_fail
-# #![feature(adt_const_params)] use ranged_integers::*;
+# #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
 let a = r!([-170141183460469231731687303715884105728 10] 0);
 rmatch!{[-170141183460469231731687303715884105728 10] a
     _ => {()}
@@ -794,7 +734,7 @@ rmatch!{[-170141183460469231731687303715884105728 10] a
 ```
 
 ```compile_fail
-# #![feature(adt_const_params)] use ranged_integers::*;
+# #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
 let a = r!([-10 170141183460469231731687303715884105727] 0);
 rmatch!{[-10 170141183460469231731687303715884105727] a
     _ => {()}
@@ -802,145 +742,145 @@ rmatch!{[-10 170141183460469231731687303715884105727] a
 ```
 
 ```
-# #![feature(generic_const_exprs)] use ranged_integers::*;
+# #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
 assert!(  r!([10 50] 30).fit_less_than(r!([10 45] 40)) == Some(r!([10 45] 30))  );
 ```
 
 ```
-# #![feature(generic_const_exprs)] use ranged_integers::*;
+# #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
 assert_eq!(r!([10 50] 39).fit_less_than( r!([0 45] 40) ), Some(r!([10 45] 39)));
 ```
 
 ```
-# #![feature(generic_const_exprs)] use ranged_integers::*;
+# #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
 assert_eq!(r!([10 50] 39).fit_less_than( r!([30 45] 40) ), Some(r!([10 45] 39)));
 ```
 
 ```
-# #![feature(generic_const_exprs)] use ranged_integers::*;
+# #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
 assert_eq!(r!([10 50] 40).fit_less_than( r!([30 45] 40) ), None);
 ```
 
 ```compile_fail
-# #![feature(generic_const_exprs)] use ranged_integers::*;
+# #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
 assert_eq!(r!([10 40] 39).fit_less_than( r!([30 45] 40) ), Some(r!([10 45] 39)));
 ```
 
 ```compile_fail
-# #![feature(generic_const_exprs)] use ranged_integers::*;
+# #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
 assert_eq!(r!([45 50] 47).fit_less_than( r!([0 45] 40) ), None);
 ```
 
 ```compile_fail
-# #![feature(generic_const_exprs)] use ranged_integers::*;
+# #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
 assert_eq!(r!([10 20] 10).fit_less_than( r!([30 45] 40) ), Some(r!([10 45] 10)));
 ```
 
 
 
 ```
-# #![feature(generic_const_exprs)] use ranged_integers::*;
+# #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
 assert!(  r!([10 50] 40).fit_less_eq(r!([10 45] 40)) == Some(r!([10 45] 40))  );
 ```
 
 ```
-# #![feature(generic_const_exprs)] use ranged_integers::*;
+# #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
 assert_eq!(r!([10 50] 40).fit_less_eq( r!([0 45] 40) ), Some(r!([10 45] 40)));
 ```
 
 ```
-# #![feature(generic_const_exprs)] use ranged_integers::*;
+# #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
 assert_eq!(r!([10 50] 40).fit_less_eq( r!([30 45] 40) ), Some(r!([10 45] 40)));
 ```
 
 ```
-# #![feature(generic_const_exprs)] use ranged_integers::*;
+# #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
 assert_eq!(r!([10 50] 40).fit_less_eq( r!([40 45] 40) ), Some(r!([10 45] 40)));
 ```
 
 ```
-# #![feature(generic_const_exprs)] use ranged_integers::*;
+# #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
 assert_eq!(r!([10 50] 41).fit_less_eq( r!([30 45] 40) ), None);
 ```
 
 ```compile_fail
-# #![feature(generic_const_exprs)] use ranged_integers::*;
+# #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
 assert!(  r!([10 40] 40).fit_less_eq(r!([40 45] 40)) == Some(r!([10 40] 40))  );
 ```
 ```
-# #![feature(generic_const_exprs)] use ranged_integers::*;
+# #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
 assert!(  r!([10 50] 10).fit_less_eq(r!([5 10] 10)) == Some(r!([10 10] 10))  );
 ```
 
 
 ```
-# #![feature(generic_const_exprs)] use ranged_integers::*;
+# #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
 assert!(  r!([10 50] 40).fit_greater_than(r!([20 40] 39)) == Some(r!([20 50] 40))  );
 ```
 
 ```
-# #![feature(generic_const_exprs)] use ranged_integers::*;
+# #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
 assert!(  r!([10 50] 40).fit_greater_than(r!([20 50] 39)) == Some(r!([20 50] 40))  );
 ```
 
 ```
-# #![feature(generic_const_exprs)] use ranged_integers::*;
+# #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
 assert!(  r!([10 50] 40).fit_greater_than(r!([20 100] 39)) == Some(r!([20 50] 40))  );
 ```
 
 ```
-# #![feature(generic_const_exprs)] use ranged_integers::*;
+# #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
 assert_eq!(r!([10 50] 40).fit_greater_than( r!([30 45] 40) ), None);
 ```
 
 ```compile_fail
-# #![feature(generic_const_exprs)] use ranged_integers::*;
+# #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
 assert!(  r!([10 50] 40).fit_greater_than(r!([10 40] 39)) == Some(r!([10 50] 40))  );
 ```
 
 ```compile_fail
-# #![feature(generic_const_exprs)] use ranged_integers::*;
+# #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
 assert!(  r!([10 50] 50).fit_greater_than(r!([50 55] 50)) == Some(r!([50 50] 50))  );
 ```
 
 ```compile_fail
-# #![feature(generic_const_exprs)] use ranged_integers::*;
+# #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
 assert!(  r!([10 50] 40).fit_greater_than(r!([0 10] 5)) == Some(r!([10 50] 40))  );
 ```
 
 
 ```
-# #![feature(generic_const_exprs)] use ranged_integers::*;
+# #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
 assert!(  r!([10 50] 40).fit_greater_eq(r!([20 40] 40)) == Some(r!([20 50] 40))  );
 ```
 
 ```
-# #![feature(generic_const_exprs)] use ranged_integers::*;
+# #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
 assert!(  r!([10 50] 40).fit_greater_eq(r!([20 50] 40)) == Some(r!([20 50] 40))  );
 ```
 
 ```
-# #![feature(generic_const_exprs)] use ranged_integers::*;
+# #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
 assert!(  r!([10 50] 40).fit_greater_eq(r!([20 100] 40)) == Some(r!([20 50] 40))  );
 ```
 
 ```
-# #![feature(generic_const_exprs)] use ranged_integers::*;
+# #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
 assert_eq!(r!([10 50] 40).fit_greater_eq( r!([30 45] 41) ), None);
 ```
 
 ```compile_fail
-# #![feature(generic_const_exprs)] use ranged_integers::*;
+# #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
 assert!(  r!([10 50] 40).fit_greater_eq(r!([10 40] 39)) == Some(r!([10 50] 40))  );
 ```
 
 ```
-# #![feature(generic_const_exprs)] use ranged_integers::*;
+# #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
 assert!(  r!([10 50] 50).fit_greater_eq(r!([50 55] 50)) == Some(r!([50 50] 50))  );
 ```
 
 ```compile_fail
-# #![feature(generic_const_exprs)] use ranged_integers::*;
+# #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
 assert!(  r!([10 50] 40).fit_greater_eq(r!([0 10] 5)) == Some(r!([10 50] 40))  );
 ```
 
@@ -948,3 +888,71 @@ assert!(  r!([10 50] 40).fit_greater_eq(r!([0 10] 5)) == Some(r!([10 50] 40))  )
 
 */
 struct Failtests;
+
+
+// Compile-time test for sizes and alignments of Ranged
+#[allow(dead_code)]
+const SIZE_ALIGN_CHECK: () = {
+    use core::mem::{align_of, size_of};
+
+    macro_rules! sz_align {
+        ($sz:ty, $t:ty) => {
+            assert!(size_of::<$t>() == size_of::<$sz>());
+            assert!(align_of::<$t>() == align_of::<$sz>());
+        };
+    }
+
+    sz_align!((), Ranged<0,0>);
+    sz_align!((), Ranged<1,1>);
+    sz_align!((), Ranged<-1,-1>);
+    sz_align!((), Ranged<100, 100>);
+    sz_align!((), Ranged<-100, -100>);
+    sz_align!((), Ranged<500, 500>);
+    sz_align!((), Ranged<-500, -500>);
+    sz_align!((), Ranged<100_000, 100_000>);
+    sz_align!((), Ranged<-100_000, -100_000>);
+    sz_align!((), Ranged<10_000_000_000, 10_000_000_000>);
+    sz_align!((), Ranged<-10_000_000_000, -10_000_000_000>);
+
+    sz_align!((), Ranged<-32768, -32768>);
+    sz_align!((), Ranged<32767, 32767>);
+    sz_align!((), Ranged<65535, 65535>);
+    sz_align!((), Ranged<65536, 65536>);
+
+    sz_align!(i8, Ranged<10,11>);
+    sz_align!(i8, Ranged<254,255>);
+    sz_align!(i8, Ranged<126,127>);
+    sz_align!(i8, Ranged<-128, -127>);
+    sz_align!(i8, Ranged<0,10>);
+    sz_align!(i8, Ranged<0,127>);
+    sz_align!(i8, Ranged<0,255>);
+    sz_align!(i8, Ranged<127,255>);
+    sz_align!(i8, Ranged<-128, 127>);
+
+    sz_align!(i16, Ranged<-128, 128>);
+
+    sz_align!(i16, Ranged<-32768, 32767>);
+    sz_align!(i16, Ranged<0, 32768>);
+    sz_align!(i16, Ranged<0, 65535>);
+    sz_align!(i16, Ranged<-32768, -32767>);
+    sz_align!(i16, Ranged<32766, 32767>);
+    sz_align!(i16, Ranged<65534, 65535>);
+
+    sz_align!(i32, Ranged<-32768, 32768>);
+    sz_align!(i32, Ranged<0, 65536>);
+
+    sz_align!(i32, Ranged<0, 4_294_967_295>);
+    sz_align!(i32, Ranged<-2_147_483_648, 2_147_483_647>);
+    sz_align!(i32, Ranged<100, 10_000_000>);
+    sz_align!(i32, Ranged<-100, 10_000_000>);
+    sz_align!(i32, Ranged<100, 2_147_483_647>);
+    sz_align!(i32, Ranged<-100, 2_147_483_647>);
+
+    sz_align!(i64, Ranged<-1, 4_294_967_295>);
+    sz_align!(i64, Ranged<0, 4_294_967_296>);
+    sz_align!(i64, Ranged<-2_147_483_649, 2_147_483_647>);
+    sz_align!(i64, Ranged<-2_147_483_648, 2_147_483_648>);
+
+    sz_align!(i64, Ranged<0, 18_446_744_073_709_551_615>);
+    sz_align!(i64, Ranged<-9_223_372_036_854_775_808, 9_223_372_036_854_775_807>);
+};

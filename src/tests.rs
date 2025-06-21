@@ -4,84 +4,6 @@
 use std::prelude::v1::*;
 
 use super::*;
-use core::ops::Add;
-use core::ops::Div;
-use core::ops::Mul;
-use core::ops::Sub;
-
-#[test]
-fn sizes() {
-    use core::mem::{align_of, size_of};
-
-    macro_rules! sz_align {
-        ($sz:ty, $t:ty) => {
-            assert_eq!(size_of::<$t>(), size_of::<$sz>());
-            assert_eq!(align_of::<$t>(), align_of::<$sz>());
-        };
-    }
-
-    sz_align!((), Ranged<0,0>);
-    sz_align!((), Ranged<1,1>);
-    sz_align!((), Ranged<-1,-1>);
-    sz_align!((), Ranged<100, 100>);
-    sz_align!((), Ranged<-100, -100>);
-    sz_align!((), Ranged<500, 500>);
-    sz_align!((), Ranged<-500, -500>);
-    sz_align!((), Ranged<100_000, 100_000>);
-    sz_align!((), Ranged<-100_000, -100_000>);
-    sz_align!((), Ranged<10_000_000_000, 10_000_000_000>);
-    sz_align!((), Ranged<-10_000_000_000, -10_000_000_000>);
-    sz_align!((), Ranged<18_446_744_073_709_551_616, 18_446_744_073_709_551_616>);
-    sz_align!((), Ranged<-18_446_744_073_709_551_616, -18_446_744_073_709_551_616>);
-
-    sz_align!((), Ranged<-32768, -32768>);
-    sz_align!((), Ranged<32767, 32767>);
-    sz_align!((), Ranged<65535, 65535>);
-    sz_align!((), Ranged<65536, 65536>);
-
-    sz_align!(i8, Ranged<10,11>);
-    sz_align!(i8, Ranged<254,255>);
-    sz_align!(i8, Ranged<126,127>);
-    sz_align!(i8, Ranged<-128, -127>);
-    sz_align!(i8, Ranged<0,10>);
-    sz_align!(i8, Ranged<0,127>);
-    sz_align!(i8, Ranged<0,255>);
-    sz_align!(i8, Ranged<127,255>);
-    sz_align!(i8, Ranged<-128, 127>);
-
-    sz_align!(i16, Ranged<-128, 128>);
-
-    sz_align!(i16, Ranged<-32768, 32767>);
-    sz_align!(i16, Ranged<0, 32768>);
-    sz_align!(i16, Ranged<0, 65535>);
-    sz_align!(i16, Ranged<-32768, -32767>);
-    sz_align!(i16, Ranged<32766, 32767>);
-    sz_align!(i16, Ranged<65534, 65535>);
-
-    sz_align!(i32, Ranged<-32768, 32768>);
-    sz_align!(i32, Ranged<0, 65536>);
-
-    sz_align!(i32, Ranged<0, 4_294_967_295>);
-    sz_align!(i32, Ranged<-2_147_483_648, 2_147_483_647>);
-    sz_align!(i32, Ranged<100, 10_000_000>);
-    sz_align!(i32, Ranged<-100, 10_000_000>);
-    sz_align!(i32, Ranged<100, 2_147_483_647>);
-    sz_align!(i32, Ranged<-100, 2_147_483_647>);
-
-    sz_align!(i64, Ranged<-1, 4_294_967_295>);
-    sz_align!(i64, Ranged<0, 4_294_967_296>);
-    sz_align!(i64, Ranged<-2_147_483_649, 2_147_483_647>);
-    sz_align!(i64, Ranged<-2_147_483_648, 2_147_483_648>);
-
-    sz_align!(i64, Ranged<0, 18_446_744_073_709_551_615>);
-    sz_align!(i64, Ranged<-9_223_372_036_854_775_808, 9_223_372_036_854_775_807>);
-
-    sz_align!(i128, Ranged<-1, 18_446_744_073_709_551_615>);
-
-    sz_align!(i128, Ranged<0, 18_446_744_073_709_551_616>);
-    sz_align!(i128, Ranged<-9_223_372_036_854_775_809, 9_223_372_036_854_775_807>);
-    sz_align!(i128, Ranged<-9_223_372_036_854_775_808, 9_223_372_036_854_775_808>);
-}
 
 #[test]
 fn print_val() {
@@ -91,10 +13,10 @@ fn print_val() {
         }
     }
 
-    for i in 0..126 {
-        let w = 2_i128.pow(i);
-        assert_eq!(w.as_ranged().get(), w);
-        assert_eq!((-w).as_ranged().get(), -w);
+    for i in 0..63 {
+        let w = 2_i64.pow(i);
+        assert_eq!(w.as_ranged().get(), i128::from(w));
+        assert_eq!((-w).as_ranged().get(), i128::from(-w));
     }
 
     assert_val!([-128 127] -128);
@@ -464,10 +386,6 @@ fn convert() {
     assert_eq!(r!(10), x);
     let x: Ranged<0, 18_446_744_073_709_551_615> = 10_u64.as_ranged();
     assert_eq!(r!(10), x);
-    let x: Ranged<
-        -170_141_183_460_469_231_731_687_303_715_884_105_728,
-        170_141_183_460_469_231_731_687_303_715_884_105_727,
-    > = 10_i128.as_ranged();
     assert_eq!(r!(10), x);
     let x: Ranged<{usize::MIN as i128}, {usize::MAX as i128}> = 10_usize.as_ranged();
     assert_eq!(r!(10), x);
@@ -599,7 +517,7 @@ fn test_rmatch() {
     assert_eq!(rmatch_example(r!([] 15)), "Success");
     assert_eq!(rmatch_example(r!([] 20)), "Fail");
 
-    let all_digits = r!(0..=9).into_iter().map(rmatch_digit).collect::<Vec<_>>().join(" ");
+    let all_digits = r!(0..=9).into_iter().map(rmatch_digit).collect::<std::vec::Vec<_>>().join(" ");
     assert_eq!(all_digits, "Zero One Two Three Four Five Six Seven Eight Nine");
 }
 
@@ -635,3 +553,11 @@ fn type_constraining_comparisons() {
         assert_eq!(r!([10 50] 39).fit_less_than( r!([15 45] 40) ), Some(r!([] 39)));
     }
 }
+
+#[test]
+fn test_index_slice() {
+    let arr = ['a', 'b', 'c', 'd', 'e'];
+    let char = arr[r!([] 4)];
+    assert_eq!(char, 'e');
+}
+

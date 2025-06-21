@@ -29,7 +29,7 @@ pub fn place_number(pos: Ranged<0, 80>, sudoku_ar: &mut Sudoku) -> bool {
                 let (x, y) = (p % r!(9), p / r!(9));
                 if sudoku_ar[x][y] == r!(0) {Some((x,y))} else {None}
             })
-        .map_or(true, |(x, y)| {
+        .is_none_or(|(x, y)| {
             for n in r!(1..10) {
                 if is_valid(n.expand(), x, y, sudoku_ar) {
                     sudoku_ar[x][y] = n.expand();
@@ -46,17 +46,17 @@ pub fn place_number(pos: Ranged<0, 80>, sudoku_ar: &mut Sudoku) -> bool {
 
 pub fn pretty_print(sudoku_ar: Sudoku) {
     let line_sep = "------+-------+------";
-    println!("{}", line_sep);
+    println!("{line_sep}");
     for (i, row) in sudoku_ar.iter().enumerate() {
         for (j, val) in row.iter().enumerate() {
-            print!("{} ", val);
+            print!("{val} ");
             if j == 2 || j == 5 {
                 print!("| ");
             }
         }
         println!();
         if i % 3 == 2 {
-            println!("{}", line_sep);
+            println!("{line_sep}");
         }
     }
 }

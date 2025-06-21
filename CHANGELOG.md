@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.10.0
+
+Works on nightly-2025-06-19.
+- **Added** const arithmetics via dedicated methods.
+- **Changed** shrunk the bounds or Ranged to hold not wider than i64 or u64, `i128` layout
+  has been removed. This was taken to prevent the non-helping error message when the
+  bounds are violated, which does not show the caller place.
+- **Changed** the internals to stop causing ICEs be supported by the current version of Rust.
+- **Changed** switched to 2024 edition of Rust.
+- **Removed** the deprecated try_expand method.
+
 ## 0.9.0
 
 Works on nightly-2024-10-12.
