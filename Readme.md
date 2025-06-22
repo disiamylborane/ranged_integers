@@ -50,7 +50,7 @@ fn roll_die(rng: &mut dyn rand::RngCore) -> Ranged<1, 6> {
 // Calculate where the player must move
 // The result fits the range -6..=12
 fn move_player(
-    mtype: MoveType, 
+    move_type: MoveType, 
     dice_points: Ranged<1, 6>
 ) -> Ranged<-6, 12>
 {
