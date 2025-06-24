@@ -3,7 +3,7 @@
 **Note: the library relies on the incomplete Rust features:**
 - It causes ICEson some Rust toolchains,
 - The usage may increase the time compilation time heavily.
-- The current version (0.10.0) was tested on nightly-2025-06-19.
+- The current version (0.10.1) was tested on nightly-2025-06-24.
 
 [Documentation at docs.rs](https://docs.rs/ranged_integers)
 

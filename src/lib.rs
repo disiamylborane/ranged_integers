@@ -18,7 +18,7 @@
 //! 
 //! # Version info
 //! 
-//! The version 0.10.0 was built for nightly-2025-06-19 toolchain.
+//! The version 0.10.1 was built for nightly-2025-06-24 toolchain.
 //!
 //! The const arithmetics were added. The const fn-s are used for compile-time arithmetics, since
 //! the `std::opts` traits are mostly non-const. The `i128` representation was removed from Ranged.
@@ -885,6 +885,39 @@ assert!(  r!([10 50] 40).fit_greater_eq(r!([0 10] 5)) == Some(r!([10 50] 40))  )
 ```
 
 
+
+```compile_fail
+# #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
+assert!(  r!([10 50] 40).fit_greater_eq(r!([0 10] 5)) == Some(r!([10 50] 40))  );
+```
+
+
+
+```
+# #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
+let arr = [1,2,3,4,5];
+let x = &arr[r!(4).expand()];
+assert_eq!(*x, 5);
+```
+
+```compile_fail
+# #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
+let arr = [1,2,3,4,5];
+let x = &arr[r!(5).expand()];
+```
+
+```
+# #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
+let arr = [1,2,3,4,5];
+let x = &arr[r!(4..=4)];
+assert_eq!(*x, [5]);
+```
+
+```compile_fail
+# #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
+let arr = [1,2,3,4,5];
+let x: &[u8; 1] = &arr[r!(4..=5)];
+```
 
 */
 struct Failtests;

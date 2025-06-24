@@ -1,8 +1,15 @@
 # Changelog
 
+## 0.10.1
+
+Works on nightly-2025-06-24-x86_64
+- **Fixed** soundness hole in array slicing.
+
 ## 0.10.0
 
 Works on nightly-2025-06-19.
+! Contains undefined behavior in public interface
+
 - **Added** const arithmetics via dedicated methods.
 - **Changed** shrunk the bounds or Ranged to hold not wider than i64 or u64, `i128` layout
   has been removed. This was taken to prevent the non-helping error message when the
