@@ -18,15 +18,7 @@
 //! 
 //! # Version info
 //! 
-//! The version 0.10.1 was built for nightly-2025-06-24 toolchain.
-//!
-//! The const arithmetics were added. The const fn-s are used for compile-time arithmetics, since
-//! the `std::opts` traits are mostly non-const. The `i128` representation was removed from Ranged.
-//! This has been done because the bounds violation generates an unpleasant error in which the
-//! place of occurrence is not specified, only the violated line inside `ranged_integers` crate. So,
-//! the possibility to violate the `i128` bounds during the automatic bounds calculation is eliminated.
-//! The bounds of i64/u64 are explicitly written as a trait constraint, so it generates a
-//! much more helpful error message.
+//! The version 0.11.0 was built for nightly-2026-01-31 toolchain.
 //!
 //! # Prerequisites
 //!
@@ -38,6 +30,13 @@
 //! ```
 //! 
 //! Note that the features needed depend on the package version.
+//! 
+//! Switch on the optimizer of the package for development builds:
+//! 
+//! ```toml
+//! [profile.dev.package.ranged_integers]
+//! opt-level = 2
+//! ```
 //! 
 //! # Usage and examples
 //! 
@@ -63,7 +62,7 @@
 //! * [Array indexing, slicing and iteration](#array-indexing-slicing-and-iteration)
 //! * [Comparison](#comparison)
 //! * [Arithmetics](#arithmetics)
-//! * [Pattern matching](#pattern-matching)
+//! * [Pattern matching and case analysis](#pattern-matching-and-case-analysis)
 //! 
 //! ## Data layout paradigm
 //!
@@ -132,6 +131,7 @@
 //! [`fit_less_eq()`](struct.Ranged.html#method.fit_less_eq),
 //! [`fit_greater_than()`](struct.Ranged.html#method.fit_greater_than), and 
 //! [`fit_greater_eq()`](struct.Ranged.html#method.fit_greater_eq) methods.
+//! [Pattern matching](#pattern-matching-and-case-analysis) functionality can be used to narrow bounds.
 //!
 //! ```
 //! # #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
@@ -237,14 +237,14 @@
 //! # #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*; fn move_player(dice_roll: Ranged<1, 6>) {}
 //! let arr = [r!([1 6] 2), r!([] 3), r!([] 4), r!([] 5)];
 //!
-//! assert_eq!(arr[r!(1..3)], [3,4]);  // Slicing with array reference output
+//! assert_eq!(arr[r!(1..=2)], [3,4]);  // Slicing with array reference output
 //! assert_eq!(arr[r!([0 3] 1)], 3);  // Slicing with array reference output
 //!
 //! // Not recommended to use this:
 //!     for i in ConstInclusiveRange::<0, 3> {
 //!         move_player(arr[i])  // iters through 0,1,2,3
 //!     }
-//! for i in r!(0..4) {
+//! for i in r!(0..=3) {
 //!     move_player(arr[i])  // iters through 0,1,2,3
 //! }
 //! for i in r!(0..=3) {
@@ -377,9 +377,20 @@
 //! `Ranged<36289, 36292> % Ranged<6, 9> = Ranged<0, 8>` while the
 //! result never exceeds `Ranged<1, 4>`.
 //!
-//! ## Pattern matching
+//! ## Pattern matching and case analysis
 //! 
-//! A limited version is implemented with [`rmatch!`] macro.
+//! Use [`rsplit!`] macro to perform the case analysis of `Ranged`. Provided
+//! the bounds of the cases, it narrows `Ranged` down to the specified pattern.
+//! 
+//! A limited version of pattern matching is implemented with [`rmatch!`] macro.
+//! It does not narrow down the bounds, but supports complex Rust patterns.
+//! 
+//! Split the range into lower and higher parts with [`Ranged::split`] function.
+//! The bounds are narrowed according to comparison result with a constant.
+//! 
+//! The function [`Ranged::split_subtract`] compares the difference of two `Ranged`
+//! values with zero], and narrows down all three values (minuend, subtrahend and
+//! difference) according to the result.
 //! 
 
 
@@ -394,7 +405,8 @@
 #![deny(missing_docs)]
 #![deny(clippy::nursery)]
 #![warn(clippy::pedantic)]
-
+#![feature(const_index)]
+#![feature(const_trait_impl)]
 
 // An alias integer representing the public interface of Ranged constants. Introduced
 // to easily change when necessary.
@@ -413,7 +425,7 @@ mod arithmetics;  // Arithmetic operations
 mod iter;  // Iterating over a constant range
 mod arrays;  // Implementing Ranged-related logics for arrays indexing and slicing
 
-pub use conversions::AsRanged;
+pub use conversions::{AsRanged, Split, SplitByDifference};
 pub use iter::ConstInclusiveRange;
 
 use value_check::{Assert, IsAllowed, OperationPossibility, memlayout, allow_range, allow_if, allow_creation};
@@ -437,8 +449,16 @@ impl<const MIN: irang, const MAX: irang> Ranged<MIN, MAX>
 where
     Assert<{allow_range(memlayout(MIN, MAX))}>: IsAllowed,
 {
+    /// Create a Ranged value without checking the bounds.
+    /// 
+    /// # Safety
+    /// 
+    /// The value (parameter `n`) must be inside the inclusive range `MIN..=MAX`.
+    /// Having an integer outside the bounds is *[undefined behavior]*.
+    ///
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[allow(clippy::inline_always)] #[must_use] #[inline(always)]
-    const unsafe fn unchecked_new(n: irang) -> Self {
+    pub const unsafe fn unchecked_new(n: irang) -> Self {
         Self {
             v: holder::RangedRepr::from_irang(n),
         }
@@ -525,7 +545,7 @@ where
 /// // "Constant" value:
 /// let c = r!(10);  // Zero-sized Ranged<10, 10> with a value 10
 /// //Range:
-/// for i in r!(0..10){
+/// for i in r!(0..=9){
 ///     let v: Ranged<0,9> = i; 
 /// }
 /// ```
@@ -536,15 +556,6 @@ macro_rules! r {
     };
     ([] $v:expr) => {
         $crate::Ranged::create_const::<$v>()
-    };
-    ($min:tt..$end:tt) => {
-        $crate::ConstInclusiveRange::<{$min}, {$end-1}>
-    };
-    (-$min:tt..-$end:tt) => {
-        $crate::ConstInclusiveRange::<{-$min}, {-$end-1}>
-    };
-    (-$min:tt..$end:tt) => {
-        $crate::ConstInclusiveRange::<{-$min}, {$end-1}>
     };
     (-$min:tt..=$max:tt) => {
         $crate::ConstInclusiveRange::<{-$min}, {$max}>
@@ -584,7 +595,7 @@ where Assert<{allow_range(memlayout(MIN, MAX))}>: IsAllowed,
 }
 
 
-/// Ranged pattern matching macro
+/// Ranged pattern matching macro: no bounds recalculation, extended patterns
 /// 
 /// Allows to match a [`Ranged`] value over a range it covers. The feature has
 /// the following limitations:
@@ -627,6 +638,53 @@ macro_rules! rmatch {
     };
 }
 
+/// Ranged pattern matching macro: bounds recalculation, strictly inclusive ranges as patterns
+/// 
+/// Allows to match a [`Ranged`] value over a range it covers. The feature has
+/// the following limitations:
+/// - The bounds must be explicitly specified; they are checked, but not inferred
+/// - The macro syntax supports only the inclusive ranges patterns. Use X..=X for
+///   a single value pattern
+/// - The unclear error reporting
+/// 
+/// ```
+/// # #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
+/// fn to_upper_half(r: Ranged<1,6>) -> Ranged<4,6> {
+///     // turn 1 to 4, 2 to 5, 3 to 6
+/// 
+///     rsplit!{[1 6] r  // Bounds and expression (token tree, 
+///                      // complex expressions must be in parentheses)
+///         1..=3 low => {low + r!(3)}  // inside the expression, low is set to Ranged<0, 3>
+///         4..=6 high => {high}  // inside the expression, high is set to Ranged<4, 6>
+///     }
+/// }
+/// ```
+#[macro_export]
+macro_rules! rsplit {
+    ([$min:literal $max:literal] $val:tt
+        $( 
+            $minval:literal..=$maxval:literal $varame:ident => $e:block
+        )*
+    ) => {
+        {
+            #[allow(renamed_and_removed_lints)]
+            #[deny(const_err)]
+            const _MINF: i128 = $min - 1;
+            #[allow(renamed_and_removed_lints)]
+            #[deny(const_err)]
+            const _PINF: i128 = $max + 1;
+            let _v: Ranged<$min, $max> = $val;
+            match _v.i128() {
+                i128::MIN..=_MINF => unsafe {core::hint::unreachable_unchecked()}
+                _PINF..=i128::MAX => unsafe {core::hint::unreachable_unchecked()}
+                $( $minval..=$maxval => {
+                    let $varame: Ranged<$minval, $maxval> = unsafe{ $crate::Ranged::<$minval, $maxval>::unchecked_new(_v.i128()) };
+                    $e 
+                } )*
+            }
+        }
+    };
+}
 
 // Failtests: the tests that should fail or generate an error.
 
@@ -743,17 +801,17 @@ rmatch!{[-10 170141183460469231731687303715884105727] a
 
 ```
 # #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
-assert!(  r!([10 50] 30).fit_less_than(r!([10 45] 40)) == Some(r!([10 45] 30))  );
+assert!(  r!([10 50] 30).fit_less_than(r!([10 45] 40)) == Some(r!([10 44] 30))  );
 ```
 
 ```
 # #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
-assert_eq!(r!([10 50] 39).fit_less_than( r!([0 45] 40) ), Some(r!([10 45] 39)));
+assert_eq!(r!([10 50] 39).fit_less_than( r!([0 45] 40) ), Some(r!([10 44] 39)));
 ```
 
 ```
 # #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
-assert_eq!(r!([10 50] 39).fit_less_than( r!([30 45] 40) ), Some(r!([10 45] 39)));
+assert_eq!(r!([10 50] 39).fit_less_than( r!([30 45] 40) ), Some(r!([10 44] 39)));
 ```
 
 ```
@@ -763,7 +821,7 @@ assert_eq!(r!([10 50] 40).fit_less_than( r!([30 45] 40) ), None);
 
 ```compile_fail
 # #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
-assert_eq!(r!([10 40] 39).fit_less_than( r!([30 45] 40) ), Some(r!([10 45] 39)));
+assert_eq!(r!([10 40] 39).fit_less_than( r!([30 45] 40) ), Some(r!([10 44] 39)));
 ```
 
 ```compile_fail
@@ -815,17 +873,17 @@ assert!(  r!([10 50] 10).fit_less_eq(r!([5 10] 10)) == Some(r!([10 10] 10))  );
 
 ```
 # #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
-assert!(  r!([10 50] 40).fit_greater_than(r!([20 40] 39)) == Some(r!([20 50] 40))  );
+assert!(  r!([10 50] 40).fit_greater_than(r!([20 40] 39)) == Some(r!([21 50] 40))  );
 ```
 
 ```
 # #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
-assert!(  r!([10 50] 40).fit_greater_than(r!([20 50] 39)) == Some(r!([20 50] 40))  );
+assert!(  r!([10 50] 40).fit_greater_than(r!([20 50] 39)) == Some(r!([21 50] 40))  );
 ```
 
 ```
 # #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
-assert!(  r!([10 50] 40).fit_greater_than(r!([20 100] 39)) == Some(r!([20 50] 40))  );
+assert!(  r!([10 50] 40).fit_greater_than(r!([20 100] 39)) == Some(r!([21 50] 40))  );
 ```
 
 ```
@@ -835,7 +893,7 @@ assert_eq!(r!([10 50] 40).fit_greater_than( r!([30 45] 40) ), None);
 
 ```compile_fail
 # #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
-assert!(  r!([10 50] 40).fit_greater_than(r!([10 40] 39)) == Some(r!([10 50] 40))  );
+assert!(  r!([10 50] 40).fit_greater_than(r!([9 40] 39)) == Some(r!([10 50] 40))  );
 ```
 
 ```compile_fail
@@ -917,6 +975,24 @@ assert_eq!(*x, [5]);
 # #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
 let arr = [1,2,3,4,5];
 let x: &[u8; 1] = &arr[r!(4..=5)];
+```
+
+
+```
+# #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
+r!([1 3] 3).split_subtract(r!([2 4] 3));
+```
+
+
+```compile_fail
+# #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
+r!([1 3] 3).split_subtract(r!([3 4] 3));
+```
+
+
+```compile_fail
+# #![feature(adt_const_params, generic_const_exprs)] use ranged_integers::*;
+r!([1 2] 2).split_subtract(r!([3 4] 3));
 ```
 
 */

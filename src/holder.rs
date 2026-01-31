@@ -43,36 +43,7 @@ impl<const N: usize> RangedRepr<N>
     pub(crate) const fn from_irang(v: i128) -> Self {
         let mut x = Self::new();
         let bytes = v.to_ne_bytes();
-
-        match N {
-            // Loops are problematic inside const fns, so we just manually go through the options.
-            // The optimizer handles it.
-            1 => {
-                x.bytes[0] = bytes[0];
-            }
-            2 => {
-                x.bytes[0] = bytes[0];
-                x.bytes[1] = bytes[1];
-            }
-            4 => {
-                x.bytes[0] = bytes[0];
-                x.bytes[1] = bytes[1];
-                x.bytes[2] = bytes[2];
-                x.bytes[3] = bytes[3];
-            }
-            8 => {
-                x.bytes[0] = bytes[0];
-                x.bytes[1] = bytes[1];
-                x.bytes[2] = bytes[2];
-                x.bytes[3] = bytes[3];
-                x.bytes[4] = bytes[4];
-                x.bytes[5] = bytes[5];
-                x.bytes[6] = bytes[6];
-                x.bytes[7] = bytes[7];
-            }
-            _ => {} // The impossible case. Just suppress it.
-        }
-
+        x.bytes.copy_from_slice(&bytes[0..N]);
         x
     }
 

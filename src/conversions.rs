@@ -1,5 +1,6 @@
 use core::str::FromStr;
 use crate::allow_range;
+use crate::arithmetics::{max_irang, min_irang};
 use crate::value_check::allow_if;
 use crate::{Assert, IsAllowed, OperationPossibility, Ranged, irang, memlayout, arithmetics::allow_division};
 /// Convert an integer value to Ranged according to its own bounds.
@@ -180,16 +181,16 @@ where Assert<{allow_range(memlayout(MIN, MAX))}>: IsAllowed,
     }
 
     /// Compares two `Ranged` values. If self is less than the other, it
-    /// returns a Ranged with the same value and shrinked bounds.
+    /// returns a Ranged with the same value and shrunk bounds.
     /// 
     /// Allowed only if the ranges interleave.
     #[inline]
     #[must_use]
-    pub const fn fit_less_than<const RMIN: irang, const RMAX: irang>(self, other: Ranged<RMIN, RMAX>) -> Option<Ranged<MIN, RMAX>> 
+    pub const fn fit_less_than<const RMIN: irang, const RMAX: irang>(self, other: Ranged<RMIN, RMAX>) -> Option<Ranged<MIN, {RMAX-1}>> 
     where
         Assert<{allow_range(memlayout(RMIN, RMAX))}>: IsAllowed,
-        Assert<{allow_range(memlayout(MIN, RMAX))}>: IsAllowed,
-        Assert<{lessthan(RMAX, MAX)}>: IsAllowed,
+        Assert<{allow_range(memlayout(MIN, RMAX-1))}>: IsAllowed,
+        Assert<{lesseq(RMAX, MAX)}>: IsAllowed,
         Assert<{lessthan(MIN, RMAX)}>: IsAllowed,
     {
         if self.get() < other.get() {
@@ -198,7 +199,7 @@ where Assert<{allow_range(memlayout(MIN, MAX))}>: IsAllowed,
     }
 
     /// Compares two `Ranged` values. If self is less than or equal to the other, it
-    /// returns a Ranged with the same value and shrinked bounds.
+    /// returns a Ranged with the same value and shrunk bounds.
     /// 
     /// Allowed only if the ranges interleave.
     #[inline]
@@ -216,16 +217,16 @@ where Assert<{allow_range(memlayout(MIN, MAX))}>: IsAllowed,
     }
 
     /// Compares two `Ranged` values. If self is greater than the other, it
-    /// returns a Ranged with the same value and shrinked bounds.
+    /// returns a Ranged with the same value and shrunk bounds.
     /// 
     /// Allowed only if the ranges interleave.
     #[inline]
     #[must_use]
-    pub const fn fit_greater_than<const RMIN: irang, const RMAX: irang>(self, other: Ranged<RMIN, RMAX>) -> Option<Ranged<RMIN, MAX>> 
+    pub const fn fit_greater_than<const RMIN: irang, const RMAX: irang>(self, other: Ranged<RMIN, RMAX>) -> Option<Ranged<{RMIN+1}, MAX>> 
     where
         Assert<{allow_range(memlayout(RMIN, RMAX))}>: IsAllowed,
-        Assert<{allow_range(memlayout(RMIN, MAX))}>: IsAllowed,
-        Assert<{lessthan(MIN, RMIN)}>: IsAllowed,
+        Assert<{allow_range(memlayout(RMIN+1, MAX))}>: IsAllowed,
+        Assert<{lesseq(MIN, RMIN)}>: IsAllowed,
         Assert<{lessthan(RMIN, MAX)}>: IsAllowed,
     {
         if self.get() > other.get() {
@@ -234,7 +235,7 @@ where Assert<{allow_range(memlayout(MIN, MAX))}>: IsAllowed,
     }
 
     /// Compares two `Ranged` values. If self is greater than or equal to the other, it
-    /// returns a Ranged with the same value and shrinked bounds.
+    /// returns a Ranged with the same value and shrunk bounds.
     /// 
     /// Allowed only if the ranges interleave.
     #[inline]
@@ -249,6 +250,114 @@ where Assert<{allow_range(memlayout(MIN, MAX))}>: IsAllowed,
         if self.get() >= other.get() {
             Some(unsafe{ Ranged::unchecked_new(self.get()) })
         } else {None}
+    }
+
+
+
+    /// Simple case analysis for Ranged
+    #[must_use]
+    pub const fn split<const MID: irang>(self) -> Split<MIN, MID, MAX>
+    where 
+        Assert<{allow_range(memlayout(MIN, MID-1))}>: IsAllowed,
+        Assert<{allow_range(memlayout(MID, MAX))}>: IsAllowed
+    {
+        if let Some(higher) = self.fit_min() {
+            Split::Higher(higher)
+        } else {
+            Split::Lower(unsafe {Ranged::unchecked_new(self.get())})
+        }
+    }
+
+    /// Narrow ranges guiding by the subtraction of two values
+    /// 
+    /// Allowed only if the ranges overlap.
+    #[must_use]
+    pub const fn split_subtract<const BMIN: irang, const BMAX: irang>(self, other: Ranged<BMIN, BMAX>) -> SplitByDifference<MIN, MAX, BMIN, BMAX>
+    where
+        Assert<{allow_range(memlayout(BMIN, BMAX))}>: IsAllowed,
+        Assert<{allow_range(memlayout(1, MAX-BMIN))}>: IsAllowed,
+        Assert<{allow_range(memlayout(MIN-BMAX, -1))}>: IsAllowed,
+        Assert<{allow_range(memlayout(max_irang(MIN, BMIN+1), MAX))}>: IsAllowed,
+        Assert<{allow_range(memlayout(max_irang(BMIN, MIN+1), BMAX))}>: IsAllowed,
+        Assert<{allow_range(memlayout(BMIN, min_irang(BMAX, MAX-1)))}>: IsAllowed,
+        Assert<{allow_range(memlayout(MIN, min_irang(MAX, BMAX-1)))}>: IsAllowed,
+        Assert<{allow_range(memlayout(max_irang(MIN, BMIN), min_irang(MAX, BMAX)))}>: IsAllowed,
+    {
+        unsafe {
+            let minuend = self.get();
+            let subtrahend = other.get();
+            let difference = minuend - subtrahend;
+            match difference {
+                1.. => SplitByDifference::Greater {
+                    minuend: Ranged::unchecked_new(minuend),
+                    subtrahend: Ranged::unchecked_new(subtrahend),
+                    difference: Ranged::unchecked_new(difference),
+                },
+                0 => SplitByDifference::Equal {
+                    minuend: Ranged::unchecked_new(minuend),
+                    subtrahend: Ranged::unchecked_new(subtrahend),
+                    difference: Ranged::unchecked_new(difference),
+                },
+                ..=-1 => SplitByDifference::Less {
+                    minuend: Ranged::unchecked_new(minuend),
+                    subtrahend: Ranged::unchecked_new(subtrahend),
+                    difference: Ranged::unchecked_new(difference),
+                },
+            }
+        }
+    }
+}
+
+/// Case-analyzed ranged value
+pub enum Split<const MIN: irang, const MID: irang, const MAX: irang>
+where 
+    Assert<{allow_range(memlayout(MIN, MID-1))}>: IsAllowed,
+    Assert<{allow_range(memlayout(MID, MAX))}>: IsAllowed
+{
+    /// Value is below the specified splitting point
+    Lower(Ranged<MIN, {MID-1}>),
+    /// Value equals or is above the specified splitting point
+    Higher(Ranged<MID, MAX>)
+}
+
+/// Case-analyzed difference (subtraction result) of two values
+/// 
+/// Is created by [`Ranged::split_subtract`] method call.
+pub enum SplitByDifference<const AMIN: irang, const AMAX: irang, const BMIN: irang, const BMAX: irang>
+where
+    Assert<{allow_range(memlayout(1, AMAX-BMIN))}>: IsAllowed,
+    Assert<{allow_range(memlayout(AMIN-BMAX, -1))}>: IsAllowed,
+    Assert<{allow_range(memlayout(max_irang(AMIN, BMIN+1), AMAX))}>: IsAllowed,
+    Assert<{allow_range(memlayout(max_irang(BMIN, AMIN+1), BMAX))}>: IsAllowed,
+    Assert<{allow_range(memlayout(BMIN, min_irang(BMAX, AMAX-1)))}>: IsAllowed,
+    Assert<{allow_range(memlayout(AMIN, min_irang(AMAX, BMAX-1)))}>: IsAllowed,
+    Assert<{allow_range(memlayout(max_irang(AMIN, BMIN), min_irang(AMAX, BMAX)))}>: IsAllowed,
+{
+    /// Minuend is greater than subtrahend
+    Greater {
+        /// Minuend (first parameter) with narrower bounds
+        minuend: Ranged<{max_irang(AMIN, BMIN+1)}, AMAX>,
+        /// Subtrahend (second parameter) with narrower bounds
+        subtrahend: Ranged<BMIN, {min_irang(BMAX, AMAX-1)}>,
+        /// Subtraction result
+        difference: Ranged<1, {AMAX-BMIN}>},
+    /// Minuend and subtrahend are equal
+    Equal {
+        /// Minuend (first parameter) with narrower bounds
+        minuend: Ranged<{max_irang(AMIN, BMIN)},{min_irang(AMAX, BMAX)}>,
+        /// Subtrahend (second parameter) with narrower bounds
+        subtrahend: Ranged<{max_irang(AMIN, BMIN)},{min_irang(AMAX, BMAX)}>,
+        /// Subtraction result
+        difference: Ranged<0,0>,
+    },
+    /// Minuend is less than subtrahend
+    Less {
+        /// Minuend (first parameter) with narrower bounds
+        minuend: Ranged<AMIN, {min_irang(AMAX, BMAX-1)}>,
+        /// Subtrahend (second parameter) with narrower bounds
+        subtrahend: Ranged<{max_irang(BMIN, AMIN+1)}, BMAX>,
+        /// Subtraction result
+        difference: Ranged<{AMIN-BMAX}, -1>,
     }
 }
 

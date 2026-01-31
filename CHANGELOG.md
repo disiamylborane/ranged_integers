@@ -1,8 +1,16 @@
 # Changelog
 
+## 0.11.0
+
+Works on nightly-2026-01-31
+- **Changed** updated to the new version of Nightly rust.
+- **Removed** exclusive patterns in r!() macro, since they do not work with new Rust compilers.
+- **Added** rsplit!() macro, split() and split_difference() functions for ranged case analysis.
+- **Fixed** results of fit_less_than and fit_greater_than should be narrower.
+
 ## 0.10.1
 
-Works on nightly-2025-06-24-x86_64
+Works on nightly-2025-06-24
 - **Fixed** soundness hole in array slicing.
 
 ## 0.10.0

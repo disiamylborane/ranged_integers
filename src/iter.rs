@@ -10,7 +10,7 @@ where Assert<{allow_range(memlayout(MIN, MAX))}>: IsAllowed,
     pub(crate) current: Option<Ranged<MIN, MAX>>
 }
 
-/// Const range for iterators with `Ranged` output and array indexing
+/// Const inclusive range for iterators with `Ranged` output and array indexing
 ///
 /// Do not use directly, use [`r!`](macro.r.html) macro instead
 ///
@@ -21,12 +21,12 @@ where Assert<{allow_range(memlayout(MIN, MAX))}>: IsAllowed,
 /// let mut fibonacci = [0; 10];
 /// fibonacci[0] = 1;
 /// fibonacci[1] = 1;
-/// for i in r!(2..10) {
+/// for i in r!(2..=9) {
 ///     fibonacci[i.expand()] = fibonacci[(i-r!(1)).expand()] + fibonacci[(i-r!(2)).expand()];
 /// }
 ///
-/// let fib234: [_; 3] = fibonacci[r!(2..5)];
-/// assert_eq!(fib234, [2,3,5]);
+/// let fib2345: [_; 4] = fibonacci[r!(2..=5)];
+/// assert_eq!(fib2345, [2,3,5,8]);
 ///
 /// ```
 #[derive(Clone, Copy)]

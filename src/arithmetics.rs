@@ -1,7 +1,7 @@
 // Contains the arithmetic functions, comparison and order traits
 // The main feature of arithmetic operations is automatic bounds calculation
 
-use crate::{allow_range, irang, memlayout, value_check::allow_if, Assert, IsAllowed, OperationPossibility, Ranged};
+use crate::{Assert, IsAllowed, OperationPossibility, Ranged, allow_range, irang, memlayout, value_check::allow_if};
 
 // UNARY MINUS
 
@@ -35,7 +35,7 @@ where
     // This constraint is required because the second argument (rhs) contains it.
     Assert<{allow_range(memlayout(BMIN, BMAX))}>: IsAllowed,
     // This constraint is required because the result contains it. Also
-    // this is a check for overflow: if we add numbers to large for Ranged, it will generate the error
+    // this is a check for overflow: if we add numbers too large for Ranged, it will generate the error
     Assert<{allow_range(memlayout(AMIN + BMIN, AMAX + BMAX))}>: IsAllowed,
 {
     // There is a math proof: for any integers in ranges AMIN..=AMAX and BMIN..=BMAX, the
@@ -66,7 +66,7 @@ where
 
 // The next items are helpers for Mul trait. The arrays are flawed in the const
 // contexts, so, such operations as 'find max of 4 items' should be handled recursively.
-// We use the helper trait `reduce!` for it.
+// We use the helper macro `reduce!` for it.
 
 
 macro_rules! reduce {
@@ -93,7 +93,7 @@ pub const fn max_irang(x: irang, y: irang) -> irang {
 const fn max_4(vals: (irang, irang, irang, irang)) -> irang {
     reduce!(max_irang, vals.0, vals.1, vals.2, vals.3)
 }
-// Find maximum of 4 numbers
+// Find minimum of 4 numbers
 const fn min_4(vals: (irang, irang, irang, irang)) -> irang {
     reduce!(min_irang, vals.0, vals.1, vals.2, vals.3)
 }
@@ -453,6 +453,22 @@ where Assert<{allow_range(memlayout(MIN, MAX))}>: IsAllowed,
     {
         unsafe { Ranged::unchecked_new(self.get().rem_euclid(rhs.get())) }
     }
+
+    /// Checks if two numbers are equal
+    #[must_use]
+    pub const fn eq<const BMIN: irang, const BMAX: irang>(&self, rhs: &Ranged<BMIN, BMAX>) -> bool 
+    where Assert<{allow_range(memlayout(BMIN, BMAX))}>: IsAllowed
+    {
+        self.get() == rhs.get()
+    }
+
+    /// Checks if two numbers are NOT equal
+    #[must_use]
+    pub const fn ne<const BMIN: irang, const BMAX: irang>(&self, other: &Ranged<BMIN, BMAX>) -> bool
+    where Assert<{allow_range(memlayout(BMIN, BMAX))}>: IsAllowed
+    {
+        !self.eq(other)
+    }
 }
 
 // Equality and order traits
@@ -481,11 +497,6 @@ where
     fn eq(&self, other: &irang) -> bool {
         self.get() == *other
     }
-
-    #[allow(clippy::partialeq_ne_impl)] // Clippy makes a row, but it's mandatory in const trait impl to implement it
-    fn ne(&self, other: &irang) -> bool {
-        !self.eq(other)
-    }
 }
 
 
@@ -496,12 +507,7 @@ where
     Assert<{allow_range(memlayout(BMIN, BMAX))}>: IsAllowed ,
 {
     fn eq(&self, rhs: &Ranged<BMIN, BMAX>) -> bool {
-        self.get() == rhs.get()
-    }
-
-    #[allow(clippy::partialeq_ne_impl)] // Clippy makes a row, but it's mandatory in const trait impl to implement it
-    fn ne(&self, other: &Ranged<BMIN, BMAX>) -> bool {
-        !self.eq(other)
+        Self::eq(self, rhs)
     }
 }
 

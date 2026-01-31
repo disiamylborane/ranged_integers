@@ -446,25 +446,25 @@ fn iter() {
     }
     assert_eq!(s, "0 1 2 3 4 5 6 7 8 9 ");
 
-    assert_eq!(r!(0..10).into_iter().step_by(2).collect::<Vec<_>>(), vec![r!([0 8] 0), r!([] 2), r!([] 4), r!([] 6), r!([] 8)]);
-    assert_eq!(r!(0..11).into_iter().step_by(2).collect::<Vec<_>>(), vec![r!([0 10] 0), r!([] 2), r!([] 4), r!([] 6), r!([] 8), r!([] 10)]);
+    assert_eq!(r!(0..=9).into_iter().step_by(2).collect::<Vec<_>>(), vec![r!([0 8] 0), r!([] 2), r!([] 4), r!([] 6), r!([] 8)]);
+    assert_eq!(r!(0..=10).into_iter().step_by(2).collect::<Vec<_>>(), vec![r!([0 10] 0), r!([] 2), r!([] 4), r!([] 6), r!([] 8), r!([] 10)]);
 
     let mut fibonacci = [0; 10];
     fibonacci[0] = 1;
     fibonacci[1] = 1;
-    for i in r!(2..10) {
+    for i in r!(2..=9) {
         fibonacci[i.expand()] = fibonacci[(i-r!(1)).expand()] + fibonacci[(i-r!(2)).expand()];
     }
     assert_eq!(fibonacci, [1,1,2,3,5,8,13,21,34,55]);
 
-    let mut fib234: [_; 3] = fibonacci[r!(2..5)];
+    let mut fib234: [_; 3] = fibonacci[r!(2..=4)];
     assert_eq!(fib234, [2,3,5]);
 
-    fib234[r!(1..3)] = [10,15];
+    fib234[r!(1..=2)] = [10,15];
     assert_eq!(fib234, [2,10,15]);
 
     let rfib = &mut fib234;
-    rfib[r!(0..2)] = [0,5];
+    rfib[r!(0..=1)] = [0,5];
     assert_eq!(fib234, [0,5,15]);
 }
 
@@ -521,6 +521,103 @@ fn test_rmatch() {
     assert_eq!(all_digits, "Zero One Two Three Four Five Six Seven Eight Nine");
 }
 
+#[test]
+fn test_rsplit() {
+    for initial in r!(1..=6) {
+        let i = rsplit!{[1 6] initial
+            1..=3 e => {
+               let q: Ranged<1, 3> = e;
+               q.i8()
+            }
+            4..=6 _r => {
+                _r.i8()
+            }
+        };
+        assert_eq!(initial.i8(), i);
+    }
+}
+
+
+#[test]
+fn test_split() {
+    for x in r!(3..=25) {
+        let splitted = x.split::<8>();
+        match splitted {
+            conversions::Split::Lower(ranged) => {
+                let _: Ranged<3, 7> = ranged;
+            }
+            conversions::Split::Higher(ranged) => {
+                let _: Ranged<8, 25> = ranged;
+            }
+        }
+    }
+}
+
+
+#[test]
+fn test_split_difference() {
+    let x : Ranged<-1000, 10> = r!([] 0);
+    let y : Ranged<-10, 1000> = r!([] 0);
+
+    match x.split_subtract(y) {
+        conversions::SplitByDifference::Greater { minuend, subtrahend, difference } => {
+            let _: Ranged<-9, 10> = minuend;
+            let _: Ranged<-10, 9> = subtrahend;
+            let _: Ranged<1, 20> = difference;
+        },
+        conversions::SplitByDifference::Equal { minuend, subtrahend, difference } => {
+            let _: Ranged<-10, 10> = minuend;
+            let _: Ranged<-10, 10> = subtrahend;
+            let _: Ranged<0, 0> = difference;
+        },
+        conversions::SplitByDifference::Less { minuend, subtrahend, difference } => {
+            let _: Ranged<-1000, 10> = minuend;
+            let _: Ranged<-10, 1000> = subtrahend;
+            let _: Ranged<-2000, -1> = difference;
+        },
+    }
+
+    match y.split_subtract(x) {
+        conversions::SplitByDifference::Greater { minuend, subtrahend, difference } => {
+            let _: Ranged<-10, 1000> = minuend;
+            let _: Ranged<-1000, 10> = subtrahend;
+            let _: Ranged<1, 2000> = difference;
+        },
+        conversions::SplitByDifference::Equal { minuend, subtrahend, difference } => {
+            let _: Ranged<-10, 10> = minuend;
+            let _: Ranged<-10, 10> = subtrahend;
+            let _: Ranged<0, 0> = difference;
+        },
+        conversions::SplitByDifference::Less { minuend, subtrahend, difference } => {
+            let _: Ranged<-10, 9> = minuend;
+            let _: Ranged<-9, 10> = subtrahend;
+            let _: Ranged<-20, -1> = difference;
+        },
+    }
+
+
+    let x : Ranged<0, 100> = r!([] 0);
+    let y : Ranged<1, 10> = r!([] 5);
+
+    match x.split_subtract(y) {
+        conversions::SplitByDifference::Greater { minuend, subtrahend, difference } => {
+            let _: Ranged<2, 100> = minuend;
+            let _: Ranged<1, 10> = subtrahend;
+            let _: Ranged<1, 99> = difference;
+        },
+        conversions::SplitByDifference::Equal { minuend, subtrahend, difference } => {
+            let _: Ranged<1, 10> = minuend;
+            let _: Ranged<1, 10> = subtrahend;
+            let _: Ranged<0, 0> = difference;
+        },
+        conversions::SplitByDifference::Less { minuend, subtrahend, difference } => {
+            let _: Ranged<0, 9> = minuend;
+            let _: Ranged<1, 10> = subtrahend;
+            let _: Ranged<-10, -1> = difference;
+        },
+    }
+}
+
 
 #[test]
 fn type_constraining_comparisons() {
@@ -530,8 +627,8 @@ fn type_constraining_comparisons() {
         let a: Ranged<20, 100> = r!([] 30);
         let b: Ranged<10, 50> = r!([] 40);
     
-        let x: Option<Ranged<20, 50>> = a.fit_less_than(b);
-        let y: Option<Ranged<20, 50>> = b.fit_greater_than(a);
+        let x: Option<Ranged<20, 49>> = a.fit_less_than(b);
+        let y: Option<Ranged<21, 50>> = b.fit_greater_than(a);
     
         assert_eq!(x.unwrap(), 30);
         assert_eq!(y.unwrap(), 40);
@@ -541,8 +638,8 @@ fn type_constraining_comparisons() {
         let a: Ranged<20, 100> = r!([] 40);
         let b: Ranged<10, 50> = r!([] 30);
     
-        let x: Option<Ranged<20, 50>> = a.fit_less_than(b);
-        let y: Option<Ranged<20, 50>> = b.fit_greater_than(a);
+        let x: Option<Ranged<20, 49>> = a.fit_less_than(b);
+        let y: Option<Ranged<21, 50>> = b.fit_greater_than(a);
     
         assert_eq!(x, None);
         assert_eq!(y, None);
@@ -553,6 +650,8 @@ fn type_constraining_comparisons() {
         assert_eq!(r!([10 50] 39).fit_less_than( r!([15 45] 40) ), Some(r!([] 39)));
     }
 }
+
+
 
 #[test]
 fn test_index_slice() {
