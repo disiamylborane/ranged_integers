@@ -18,7 +18,7 @@
 //! 
 //! # Version info
 //! 
-//! The version 0.11.0 was built for nightly-2026-01-31 toolchain.
+//! The version 0.12.0 was built for nightly-2026-08-17 toolchain.
 //!
 //! # Prerequisites
 //!
@@ -405,8 +405,12 @@
 #![deny(missing_docs)]
 #![deny(clippy::nursery)]
 #![warn(clippy::pedantic)]
-#![feature(const_index)]
 #![feature(const_trait_impl)]
+#![feature(const_cmp)]
+#![feature(structural_match)]
+#![feature(const_param_ty_trait)]
+
+#![cfg_attr(test, feature(test))]
 
 // An alias integer representing the public interface of Ranged constants. Introduced
 // to easily change when necessary.
@@ -416,6 +420,7 @@ type irang = i128;
 
 #[cfg(test)] #[macro_use] extern crate std;
 #[cfg(test)] mod tests;
+#[cfg(test)] mod bench;
 
 pub mod value_check;  // Compile-time infrastructure for Ranged
 
@@ -468,7 +473,7 @@ where
     #[allow(clippy::inline_always)] #[must_use] #[inline(always)]
     const fn get(self) -> irang {
         if MIN == MAX {MIN}
-        else {self.v.to_irang(const{MIN>=0})}
+        else {self.v.to_irang()}
     }
 
     /// Create a Ranged value checking the bounds at runtime

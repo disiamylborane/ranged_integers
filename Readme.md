@@ -2,8 +2,10 @@
 
 **Note: the library relies on the incomplete Rust features:**
 - It causes ICEson some Rust toolchains,
-- The usage may increase the time compilation time heavily.
-- The current version (0.11.0) was tested on nightly-2026-01-31.
+- It requires generic_const_exprs feature and thus the previous-gen trait solver, so
+  it will the option `-Znext-solver=coherence` will be automaticaly caught up.
+- The usage may increase the time compilation time heavily,
+- The current version (0.12.0) was tested on nightly-2026-08-17 and nightly-2026-10-18.
 
 [Documentation at docs.rs](https://docs.rs/ranged_integers)
 

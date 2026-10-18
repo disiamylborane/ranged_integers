@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.12.0
+
+Tested on nightly-2026-08-17 and nightly-2026-10-18 with old trait solver
+- **Changed** the internal representation of Ranged. The Ranged is now
+  stored not as byte array with zero-length aligner item, but as an integer
+  type chosen by const traits, as it was done in 0.7.0.
+
 ## 0.11.0
 
 Works on nightly-2026-01-31

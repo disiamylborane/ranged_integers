@@ -23,6 +23,7 @@ use crate::irang;
 ///    // code
 /// }
 /// ```
+#[allow(clippy::empty_enums)]
 pub enum Assert<const COND: OperationPossibility> {}
 
 /// A trait to be used with [`Assert`] type to restrict the const generic input parameters
@@ -54,18 +55,18 @@ pub const fn allow_if(cond: bool)->OperationPossibility {
 /// Pick out the "smallest" layout that fits the min..=max range.
 /// To be evaluated at compile time. Used with the [`allow_range`] function
 #[must_use]
-pub const fn memlayout(min: i128, max: i128) -> usize {
+pub const fn memlayout(min: i128, max: i128) -> crate::holder::Layout {
     macro_rules! layout_variants {
-        ($($t:ident:$n:literal)+) => {
-            $(   if $t::MIN as i128 <= min && max <= $t::MAX as i128 {return $n}   )+
+        ($($t:ident:$n:ident)+) => {
+            $(   if $t::MIN as i128 <= min && max <= $t::MAX as i128 {return crate::holder::Layout::$n}   )+
         }
     }
     if min > max {
-        return 16;  // This will be forbidden by allow_range constraint
+        return crate::holder::Layout::Forbidden;  // This will be forbidden by allow_range constraint
     }
-    if min == max {return 0;}
-    layout_variants! {u8:1 i8:1 u16:2 i16:2 u32:4 i32:4 u64:8 i64:8}
-    16  // This will be forbidden by allow_range constraint
+    if min == max {return crate::holder::Layout::Trivial;}
+    layout_variants! {u8:U8 i8:I8 u16:U16 i16:I16 u32:U32 i32:I32 u64:U64 i64:I64}
+    crate::holder::Layout::Forbidden  // This will be forbidden by allow_range constraint
 }
 
 
@@ -76,8 +77,8 @@ pub const fn memlayout(min: i128, max: i128) -> usize {
 /// `memlayout(MIN, MAX)` constant, so the compiler is satisfied to use
 /// the internal representation of Ranged.
 #[must_use]
-pub const fn allow_range(sz: usize) -> OperationPossibility {
-    allow_if(sz <= 8)
+pub const fn allow_range(sz: crate::holder::Layout) -> OperationPossibility {
+    allow_if(sz != crate::holder::Layout::Forbidden)
 }
 
 /// Constraint of [`crate::Ranged::create_const`] method.

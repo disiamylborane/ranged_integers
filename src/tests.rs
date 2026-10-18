@@ -328,9 +328,9 @@ fn eq() {
     let b = r!(40);
     assert_eq!(a, a);
     assert_eq!(15 % a, 15 % b);
-    assert!(10 % a + 15 % b == 15 % a + 10 % b);
-    assert!(11 % a + 15 % b != 15 % a + 10 % b);
-    assert!(a != b);
+    assert_eq!(10 % a + 15 % b, 15 % a + 10 % b);
+    assert_ne!(11 % a + 15 % b, 15 % a + 10 % b);
+    assert_ne!(a, b);
 
     assert!(r!(40) > r!(20));
     assert!(r!(40) >= r!(20));
@@ -352,7 +352,7 @@ fn eq() {
 fn eqz() {
     let some_i32 = 4;
     let some_wrong_i32 = 8;
-    assert!(Ranged::<0, 6>::new(some_i32) == Some(r!([] 4)));
+    assert_eq!(Ranged::<0, 6>::new(some_i32), Some(r!([] 4)));
     assert!(Ranged::<0, 6>::new(some_wrong_i32).is_none());
 }
 
